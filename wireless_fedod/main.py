@@ -99,35 +99,41 @@ class WirelessFedODSimulator:
         print()
 
 
+if __name__ == '__main__':
+    # Example Usage
+    # Create simulator
+    simulator = WirelessFedODSimulator()
+    # Create train/test dataset
+    emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(cache_dir='./cache')
+    example_dataset = emnist_train.create_tf_dataset_for_client(emnist_train.client_ids[0])
+    preprocessed_example_dataset = simulator.preprocess(example_dataset)
 
-# Example Usage
-# Create simulator
-simulator = WirelessFedODSimulator()
-# Create train/test dataset
-emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(cache_dir='./cache')
-example_dataset = emnist_train.create_tf_dataset_for_client(emnist_train.client_ids[0])
-preprocessed_example_dataset = simulator.preprocess(example_dataset)
+    # Create model_fn
+    def create_keras_model():
+        return tf.keras.models.Sequential([
+            tf.keras.layers.InputLayer(input_shape=(784, )),
+            tf.keras.layers.Dense(10, kernel_initializer='zeros'),
+            tf.keras.layers.Softmax(),
+        ])
+    def model_fn():
+        # We _must_ create a new model here, and _not_ capture it from an external
+        # scope. TFF will call this within different graph contexts.
+        keras_model = create_keras_model()
+        return tff.learning.models.from_keras_model(
+            keras_model,
+            input_spec=preprocessed_example_dataset.element_spec,
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-# Create model_fn
-def create_keras_model():
-    return tf.keras.models.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(784, )),
-        tf.keras.layers.Dense(10, kernel_initializer='zeros'),
-        tf.keras.layers.Softmax(),
-    ])
-def model_fn():
-    # We _must_ create a new model here, and _not_ capture it from an external
-    # scope. TFF will call this within different graph contexts.
-    keras_model = create_keras_model()
-    return tff.learning.models.from_keras_model(
-        keras_model,
-        input_spec=preprocessed_example_dataset.element_spec,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-
-# Set dataset, model_fn, and agent_selection_fn
-simulator.set_dataset(emnist_train, emnist_test)
-simulator.set_model_fn(model_fn)
-simulator.set_agent_selection_fn(lambda x, y: np.random.choice(x.client_ids, y, replace=False))
-# Run training
-simulator.run_epoch()
+    # Set dataset, model_fn, and agent_selection_fn
+    simulator.set_dataset(emnist_train, emnist_test)
+    simulator.set_model_fn(model_fn)
+    simulator.set_agent_selection_fn(lambda x, y: np.random.choice(x.client_ids, y, replace=False))
+    # Run training
+    # while simulator.metrics is None or simulator.metrics['loss'] > 1:
+    #     simulator.run_epoch()
+    simulator.run_epoch()
+    # Plot metrics
+    # plt.plot(simulator.metrics['loss'])
+    # plt.plot(simulator.metrics['sparse_categorical_accuracy'])
+    # plt.show()
