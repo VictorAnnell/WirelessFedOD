@@ -23,6 +23,7 @@ class WirelessFedODSimulator:
         self.shuffle_buffer = 100
         self.prefetch_buffer = 10
         self.round_num = None
+        self.metrics = None
 
         self.training_process = None
         self.train_state = None
@@ -77,6 +78,7 @@ class WirelessFedODSimulator:
         self.federated_train_data = self.make_federated_data(self.train_data, self.sample_clients)
         self.train_result = self.training_process.next(self.train_state, self.federated_train_data)
         self.train_state = self.train_result.state
+        self.metrics = self.train_result.metrics['client_work']['train']
         # Format metrics to be one line
         print('round {:2d}, '.format(self.round_num), end='')
         print(f'num_clients: {len(self.sample_clients)}', end=', ')
