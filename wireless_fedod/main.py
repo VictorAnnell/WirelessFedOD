@@ -6,6 +6,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 from matplotlib import pyplot as plt
+import keras_cv
+
+from dataset import load_zod2
 
 np.random.seed(0)
 
@@ -111,15 +114,89 @@ class WirelessFedODSimulator:
             print(f'{name}: {value:.4f}', end=', ')
         print()
 
+simulator = WirelessFedODSimulator()
 
-if __name__ == '__main__':
+# Set preprocess_fn
+def preprocess_fn(dataset):
+    def load_image(image_path):
+        image = tf.io.read_file(image_path)
+        image = tf.image.decode_jpeg(image, channels=3)
+        return image
+
+    def format_element_fn(image_path, classes, bboxes):
+        # Create a dictionary with the image and bounding boxes as required by KerasCV
+        image = load_image(image_path)
+        bounding_boxes = {
+            "classes": tf.cast(classes, dtype=tf.float32),
+            "boxes": bboxes,
+        }
+        return {"images": tf.cast(image, tf.float32), "bounding_boxes": bounding_boxes}
+
+    def dict_to_tuple_fn(element):
+        return element['images'], element['bounding_boxes']
+
+    augmenter = tf.keras.Sequential(
+        layers=[
+            keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
+            keras_cv.layers.RandomShear(
+                x_factor=0.2, y_factor=0.2, bounding_box_format="xyxy"
+            ),
+            keras_cv.layers.JitteredResize(
+                target_size=(640, 640), scale_factor=(0.75, 1.3), bounding_box_format="xyxy"
+            ),
+        ]
+    )
+    dataset = dataset.map(format_element_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
+    dataset = dataset.map(augmenter, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.map(dict_to_tuple_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+
+    # dataset = dataset.shuffle(self.shuffle_buffer)
+
+    return dataset
+
+
+simulator.set_preprocess_fn(preprocess_fn)
+
+# Load ZOD dataset
+zod_train, zod_test = load_zod2(num_clients=simulator.num_clients)
+example_dataset = zod_train.create_tf_dataset_for_client(zod_train.client_ids[0])
+preprocessed_example_dataset = simulator.preprocess_fn(example_dataset)
+
+# Create model_fn
+def create_kerascv_model():
+    return keras_cv.models.YOLOV8Detector.from_preset("yolo_v8_m_pascalvoc", bounding_box_format="xyxy")
+
+keras_model = create_kerascv_model()
+def model_fn():
+    keras_model = create_kerascv_model()
+    return tff.learning.models.from_keras_model(
+        keras_model,
+        input_spec=preprocessed_example_dataset.element_spec,
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[tf.keras.metrics.MeanSquaredError()]
+    )
+# Set dataset, model_fn, and agent_selection_fn
+simulator.set_dataset(zod_train, zod_test)
+simulator.set_model_fn(model_fn)
+simulator.set_agent_selection_fn(lambda x, y: np.random.choice(x.client_ids, y, replace=False))
+# Set optimizers
+simulator.set_optimizers(lambda: tf.keras.optimizers.Adam(learning_rate=0.001),
+                         lambda: tf.keras.optimizers.Adam(learning_rate=0.1))
+# Run training
+simulator.run_epoch()
+
+
+# if __name__ == '__main__':
+def main():
     # Example Usage
     # Create simulator
     simulator = WirelessFedODSimulator()
     # Create train/test dataset
     emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(cache_dir='./cache')
     example_dataset = emnist_train.create_tf_dataset_for_client(emnist_train.client_ids[0])
-    preprocessed_example_dataset = simulator.preprocess(example_dataset)
+    preprocessed_example_dataset = simulator.preprocess_fn(example_dataset)
 
     # Create model_fn
     def create_keras_model():
