@@ -16,8 +16,9 @@ class WirelessFedODSimulator:
         self.test_data = None
         self.federated_train_data = None
         self.model_fn = None
-        self.agent_selection_fn = None
-        self.num_clients = 10
+        self.agent_selection_fn = self.default_agent_selection
+        self.preprocess_fn = self.default_preprocess
+        self.num_clients = 2
         self.num_epochs = 5
         self.batch_size = 20
         self.shuffle_buffer = 100
@@ -30,6 +31,8 @@ class WirelessFedODSimulator:
         self.train_result = None
         self.agent_selection_fn = None
         self.sample_clients = None
+        self.client_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.02)
+        self.server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
     def set_dataset(self, train_data, test_data):
         self.train_data = train_data
@@ -50,7 +53,10 @@ class WirelessFedODSimulator:
         self.shuffle_buffer = shuffle_buffer
         self.prefetch_buffer = prefetch_buffer
 
-    def preprocess(self, dataset):
+    def set_preprocess_fn(self, preprocess_fn):
+        self.preprocess_fn = preprocess_fn
+
+    def default_preprocess(self, dataset):
 
         def batch_format_fn(element):
             """Flatten a batch `pixels` and return the features as an `OrderedDict`."""
@@ -64,9 +70,12 @@ class WirelessFedODSimulator:
     def set_agent_selection_fn(self, agent_selection_fn):
         self.agent_selection_fn = agent_selection_fn
 
+    def default_agent_selection(self, client_data, num_clients):
+        return np.random.choice(client_data.client_ids, num_clients, replace=False)
+
     def make_federated_data(self, client_data, client_ids):
         return [
-            self.preprocess(client_data.create_tf_dataset_for_client(x))
+            self.preprocess_fn(client_data.create_tf_dataset_for_client(x))
             for x in client_ids
         ]
 
@@ -84,12 +93,16 @@ class WirelessFedODSimulator:
         print(f'num_clients: {len(self.sample_clients)}', end=', ')
         self.print_metrics(self.train_result)
 
+    def set_optimizers(self, client_optimizer_fn, server_optimizer_fn):
+        self.client_optimizer_fn = client_optimizer_fn
+        self.server_optimizer_fn = server_optimizer_fn
+
     def initialize(self):
         self.round_num = 0
         self.training_process = tff.learning.algorithms.build_weighted_fed_avg(
             self.model_fn,
-            client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02),
-            server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0))
+            client_optimizer_fn=self.client_optimizer_fn,
+            server_optimizer_fn=self.server_optimizer_fn)
 
         self.train_state = self.training_process.initialize()
 
