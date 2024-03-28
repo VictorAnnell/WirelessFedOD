@@ -9,9 +9,10 @@ import matplotlib.pyplot as plt
 
 from dataset import load_zod_federated, OBJECT_CLASSES, class_mapping
 
+# keras.mixed_precision.set_global_policy('mixed_float16')
 np.random.seed(0)
 
-BATCH_SIZE = 4
+BATCH_SIZE = 2
 
 def visualize_dataset(inputs, value_range, rows, cols, bounding_box_format):
     inputs = next(iter(inputs.take(1)))
@@ -87,11 +88,11 @@ class Car:
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
 
-        # self.metrics = keras_cv.callbacks.PyCOCOCallback(self.preprocess_fn(self.test_data), bounding_box_format="xyxy")
+        self.metrics = keras_cv.callbacks.PyCOCOCallback(self.preprocess_fn(self.test_data), bounding_box_format="xyxy")
         model = self.model_fn()
         model.set_weights(self.weights)
         # model.compile(optimizer=self.optimizer, classification_loss=self.classification_loss, box_loss=self.box_loss, metrics=self.metrics)
-        model.compile(optimizer=self.optimizer_fn(), classification_loss=self.classification_loss, box_loss=self.box_loss)
+        # model.compile(optimizer=self.optimizer_fn(), classification_loss=self.classification_loss, box_loss=self.box_loss)
         if self.preprocessed_train_data is None:
             print("Preprocessing train data for", self)
             self.preprocessed_train_data = self.preprocess_fn(self.train_data)
@@ -102,7 +103,8 @@ class Car:
             self.preprocessed_train_data,
             epochs=self.local_epochs,
             # validation_data=self.preprocessed_test_data,
-            # callbacks=[self.metrics],
+            callbacks=[self.metrics],
+            verbose=2,
         )
         # model(preprocessed_train_data)
         self.weights = model.get_weights()
@@ -131,7 +133,7 @@ def default_agent_selection(client_ids, num_clients):
 
 
 class WirelessFedODSimulator:
-    def __init__(self, num_clients=2):
+    def __init__(self, num_clients=1):
         self.train_data_list = None
         self.test_data = None
         self.federated_train_data = None
@@ -157,6 +159,7 @@ class WirelessFedODSimulator:
 
     # TODO: Handle the dataset in a more generic way
     def initialize_cars(self):
+        print("Initializing cars")
         for i in range(self.num_clients):
             car = Car(i, self.model_fn, self.train_data_list[i], self.test_data)
             car.optimizer_fn = self.client_optimizer_fn
@@ -186,7 +189,7 @@ class WirelessFedODSimulator:
         self.global_weights = self.model_fn().get_weights()
         self.initialize_cars()
 
-    def run_epoch(self):
+    def run_round(self):
         if self.model_fn is None:
             raise ValueError("Model function is not set.")
         if self.train_data_list is None:
@@ -208,18 +211,55 @@ class WirelessFedODSimulator:
         print(", ".join(str(car) for car in cars_this_round))
 
         for car in tqdm(cars_this_round, desc="Training cars"):
+            keras.backend.clear_session()
             car.weights = self.global_weights
             car.train()
 
-        # Update global weights
-        # self.global_weights = np.mean([car.weights for car in cars_this_round], axis=0)
-        self.round_num += 1
-
-    def make_federated_data(self, client_data, client_ids):
-        return [
-            self.preprocess_fn(client_data.create_tf_dataset_for_client(x))
-            for x in client_ids
+        # Update global weights with the scaled average of the local weights
+        total_samples = sum(len(car.train_data) for car in cars_this_round)
+        weighted_weights = [
+            [layer * len(car.train_data) / total_samples for layer in car.weights]
+            for car in cars_this_round
         ]
+        self.global_weights = [
+            np.average(weights, axis=0) for weights in zip(*weighted_weights)
+        ]
+
+        self.round_num += 1
+        self.evaluate()
+
+    def evaluate(self):
+        if self.model_fn is None:
+            raise ValueError("Model function is not set.")
+        if self.test_data is None:
+            raise ValueError("Test data is not set.")
+        if self.preprocess_fn is None:
+            raise ValueError("Preprocess function is not set.")
+
+        model = self.model_fn()
+        model.set_weights(self.global_weights)
+        preprocessed_test_data = self.preprocess_fn(self.test_data)
+        # self.metrics = keras_cv.callbacks.PyCOCOCallback(preprocessed_test_data, bounding_box_format="xyxy")
+        # result = model.evaluate(preprocessed_test_data, callbacks=[self.metrics], verbose=2)
+        result = model.evaluate(preprocessed_test_data)
+        self.print_metrics(model, result)
+
+    @staticmethod
+    def print_metrics(model, result):
+        print()
+        print("Round Metrics:")
+        if isinstance(result, list):
+            for name, value in zip(model.metrics_names, result):
+                print(f"{name}: {value:.4f}", end=", ")
+        else:
+            print(f"loss: {result:.4f}", end=", ")
+        print(end="\n\n")
+
+    # def make_federated_data(self, client_data, client_ids):
+    #     return [
+    #         self.preprocess_fn(client_data.create_tf_dataset_for_client(x))
+    #         for x in client_ids
+    #     ]
 
     # def run_epoch(self):
     #     if self.train_state is None or self.round_num is None:
@@ -248,14 +288,6 @@ class WirelessFedODSimulator:
     #     )
     #
     #     self.train_state = self.training_process.initialize()
-
-    def print_metrics(self, train_result):
-        for name, value in train_result.metrics["client_work"]["train"].items():
-            print(f"{name}: {value:.4f}", end=", ")
-        print()
-
-
-
 
 # Set preprocess_fn
 def preprocess_fn(dataset):
@@ -294,8 +326,8 @@ def preprocess_fn(dataset):
     )
 
     dataset = dataset.map(format_element_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.shuffle(BATCH_SIZE * 4, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.shuffle(BATCH_SIZE * 4)
+    dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
     # dataset = dataset.map(augmenter, num_parallel_calls=tf.data.AUTOTUNE)
     def create_augmenter_fn(augmenters):
         def augmenter_fn(inputs):
@@ -324,14 +356,26 @@ zod_train, zod_test = load_zod_federated(num_clients=simulator.num_clients)
 
 # Create model_fn
 def model_fn():
-    return keras_cv.models.YOLOV8Detector.from_preset(
-        "resnet50_imagenet",
-        # "yolo_v8_m_pascalvoc",
-        # For more info on supported bounding box formats, visit
-        # https://keras.io/api/keras_cv/bounding_box/
+    model = keras_cv.models.RetinaNet.from_preset(
+        "resnet50",
         bounding_box_format="xyxy",
         num_classes=len(OBJECT_CLASSES),
     )
+    model.compile(
+        classification_loss='focal',
+        box_loss='smoothl1',
+        optimizer=keras.optimizers.SGD(global_clipnorm=10.0),
+        jit_compile=False,
+    )
+    return model
+    # return keras_cv.models.YOLOV8Detector.from_preset(
+    #     "resnet50_imagenet",
+    #     # "yolo_v8_m_pascalvoc",
+    #     # For more info on supported bounding box formats, visit
+    #     # https://keras.io/api/keras_cv/bounding_box/
+    #     bounding_box_format="xyxy",
+    #     num_classes=len(OBJECT_CLASSES),
+    # )
     # return keras_cv.models.YOLOV8Detector.from_preset(
     #     "yolo_v8_m_pascalvoc", bounding_box_format="xyxy"
     # )
@@ -346,7 +390,8 @@ simulator.model_fn = model_fn
 # simulator.client_optimizer_fn = lambda: keras.optimizers.Adam(learning_rate=0.001)
 # simulator.server_optimizer_fn = lambda: keras.optimizers.Adam(learning_rate=0.1)
 # Run training
-simulator.run_epoch()
+for _ in range(5):
+    simulator.run_round()
 
 # if __name__ == '__main__':
 def main():
@@ -392,7 +437,7 @@ def main():
     # Run training
     # while simulator.metrics is None or simulator.metrics['loss'] > 1:
     #     simulator.run_epoch()
-    simulator.run_epoch()
+    simulator.run_round()
     # Plot metrics
     # plt.plot(simulator.metrics['loss'])
     # plt.plot(simulator.metrics['sparse_categorical_accuracy'])
