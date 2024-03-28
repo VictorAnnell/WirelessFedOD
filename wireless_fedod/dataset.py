@@ -1,8 +1,10 @@
 import tensorflow as tf
-import tensorflow_federated as tff
+# import tensorflow_federated as tff
 import numpy as np
 import collections
 import random
+import keras_cv
+from tqdm.auto import tqdm
 random.seed(0)
 
 # import the ZOD DevKit
@@ -17,57 +19,9 @@ from zod.data_classes import LidarData
 
 from zod.anno.object import OBJECT_CLASSES
 
-
-def load_zod():
-    # NOTE! Set the path to dataset and choose a version
-    dataset_root = "./datasets"
-    version = "mini"  # "mini" or "full"
-
-    # initialize ZodFrames
-    zod_frames = ZodFrames(dataset_root=dataset_root, version=version)
-
-    # # get default training and validation splits
-    training_frames = zod_frames.get_split(constants.TRAIN)
-    validation_frames = zod_frames.get_split(constants.VAL)
-
-    # # print the number of training and validation frames
-    # print(f"Number of training frames: {len(training_frames)}")
-    # print(f"Number of validation frames: {len(validation_frames)}")
-
-    # # print out the first 5 training frames
-    # print("The 5 first training frames have the ids:", sorted(list(training_frames))[:5])
-    #
-
-    def create_dataset(frames):
-        # Load training_frames inta a tensorfow dataset
-        image_paths = []
-        bbox = []
-        classes = []
-        for frame_id in frames:
-            frame = zod_frames[frame_id]
-            # image = frame.get_image(Anonymization.DNAT)
-            image_path = frame.info.get_key_camera_frame(Anonymization.DNAT).filepath
-            annotations = frame.get_annotation(AnnotationProject.OBJECT_DETECTION)
-            for annotation in annotations:
-                if annotation.box2d:
-                    image_paths.append(image_path)
-                    bbox.append(annotation.box2d.xyxy)
-                    classes.append(annotation.subclass)
-
-        bbox_tensor = tf.ragged.constant(bbox)
-        classes_tensor = tf.ragged.constant(classes)
-        image_paths_tensor = tf.ragged.constant(image_paths)
-        dataset = tf.data.Dataset.from_tensor_slices((image_paths_tensor, classes_tensor, bbox_tensor))
-        return dataset
-
-    training_dataset = create_dataset(training_frames)
-    validation_dataset = create_dataset(validation_frames)
-
-    return training_dataset, validation_dataset
-
 class_mapping = dict(zip(range(len(OBJECT_CLASSES)), OBJECT_CLASSES))
 
-def create_dataset(zod_frames, frame_ids):
+def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
     # Load training_frames inta a tensorfow dataset
     image_paths = []
     bbox = []
@@ -96,6 +50,8 @@ def create_dataset(zod_frames, frame_ids):
             ]
             class_ids.append(frame_class_ids)
     bbox_tensor = tf.ragged.constant(bbox)
+    # TODO: fix
+    converted_bbox_tensor = keras_cv.bounding_box.convert_format(bbox_tensor, bounding_box_format, "xyxy")
     classes_tensor = tf.ragged.constant(class_ids)
     image_paths_tensor = tf.ragged.constant(image_paths)
     # dataset_dict = collections.OrderedDict(
@@ -104,8 +60,69 @@ def create_dataset(zod_frames, frame_ids):
     #     bbox=bbox_tensor
     # )
     # dataset = tf.data.Dataset.from_tensor_slices(dataset_dict)
-    dataset = tf.data.Dataset.from_tensor_slices((image_paths_tensor, classes_tensor, bbox_tensor))
+    dataset = tf.data.Dataset.from_tensor_slices((image_paths_tensor, classes_tensor, converted_bbox_tensor))
     return dataset
+
+
+def get_random_sized_subset(input_list, client_id, num_clients, seed):
+    random.seed(seed)
+    # Generate random subset sizes
+    total_elements = len(input_list)
+    subset_sizes = [random.randint(1, total_elements // num_clients + 1) for _ in range(num_clients)]
+    # Adjust the last subset size if the sum exceeds the list length
+    while sum(subset_sizes) > total_elements:
+        subset_sizes[-1] -= 1
+    # Allocate subsets based on these sizes
+    subsets = []
+    start_index = 0
+    for size in subset_sizes:
+        subsets.append(input_list[start_index:start_index + size])
+        start_index += size
+    # Check if client_id is valid
+    if client_id < 0 or client_id >= num_clients:
+        raise ValueError("Invalid client_id")
+    return subsets[client_id]
+
+def load_zod(version="mini", seed=0, bounding_box_format="xyxy"):
+    # NOTE! Set the path to dataset and choose a version
+    dataset_root = "./datasets"
+    version = "mini"  # "mini" or "full"
+
+    # initialize ZodFrames
+    zod_frames = ZodFrames(dataset_root=dataset_root, version=version)
+
+    # # get default training and validation splits
+    training_frames = zod_frames.get_split(constants.TRAIN)
+    validation_frames = zod_frames.get_split(constants.VAL)
+
+    training_dataset = create_dataset(zod_frames, training_frames, bounding_box_format=bounding_box_format)
+    validation_dataset = create_dataset(zod_frames, validation_frames, bounding_box_format=bounding_box_format)
+
+    return training_dataset, validation_dataset
+
+def load_zod_federated(num_clients=5, version="mini", seed=0, bounding_box_format="xyxy"):
+    # NOTE! Set the path to dataset and choose a version
+    dataset_root = "./datasets"
+    version = "mini"  # "mini" or "full"
+
+    # initialize ZodFrames
+    zod_frames = ZodFrames(dataset_root=dataset_root, version=version)
+
+    # # get default training and validation splits
+    training_frames = zod_frames.get_split(constants.TRAIN)
+    validation_frames = zod_frames.get_split(constants.VAL)
+
+    client_ids = list(range(num_clients))
+    training_dataset_list = []
+
+    for client_id in tqdm(client_ids):
+        client_frame_ids = get_random_sized_subset(list(training_frames), client_id, num_clients, seed)
+        training_dataset_list.append(create_dataset(zod_frames, client_frame_ids, bounding_box_format=bounding_box_format))
+
+    # training_dataset = create_dataset(zod_frames, training_frames)
+    validation_dataset = create_dataset(zod_frames, validation_frames, bounding_box_format=bounding_box_format)
+
+    return training_dataset_list, validation_dataset
 
 def load_zod2(num_clients=5, seed=0):
     client_ids = list(range(num_clients))
