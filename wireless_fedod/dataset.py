@@ -86,7 +86,7 @@ def get_random_sized_subset(input_list, client_id, num_clients, seed):
 def load_zod(version="mini", seed=0, bounding_box_format="xyxy"):
     # NOTE! Set the path to dataset and choose a version
     dataset_root = "./datasets"
-    version = "mini"  # "mini" or "full"
+    version = version  # "mini" or "full"
 
     # initialize ZodFrames
     zod_frames = ZodFrames(dataset_root=dataset_root, version=version)
