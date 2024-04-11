@@ -1,11 +1,12 @@
-import keras_cv
 import random
+
 import tensorflow as tf
 
 
 class Car:
-
-    def __init__(self, id, model_fn, train_data, test_data, simulation_id, local_epochs=5):
+    def __init__(
+        self, id, model_fn, train_data, test_data, simulation_id, local_epochs=5
+    ):
         self.id = id
         self.local_epochs = local_epochs
         self.location = (random.uniform(-100, 100), random.uniform(-100, 100))
@@ -53,10 +54,17 @@ class Car:
         # Callbacks
         # self.callbacks.append(keras_cv.callbacks.PyCOCOCallback(self.test_data, bounding_box_format="xyxy"))
         log_dir = f"logs/{self.simulation_id}/cars/{self.id}"
-        self.callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1, write_graph=True, write_images=True, write_steps_per_second=True))
+        self.callbacks.append(
+            tf.keras.callbacks.TensorBoard(
+                log_dir=log_dir,
+                histogram_freq=1,
+                write_graph=True,
+                write_images=True,
+                write_steps_per_second=True,
+            )
+        )
 
         print(f"Training {self}")
-
 
         model.fit(
             self.preprocessed_train_data,

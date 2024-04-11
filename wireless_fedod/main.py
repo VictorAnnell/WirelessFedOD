@@ -1,15 +1,14 @@
 import collections
-
 import datetime
+
 import keras
 import keras_cv
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from car import Car
 from dataset import OBJECT_CLASSES, class_mapping, load_zod_federated
 from tqdm.auto import tqdm
-
-from car import Car
 
 # keras.mixed_precision.set_global_policy('mixed_float16')
 np.random.seed(0)
@@ -91,7 +90,7 @@ def default_agent_selection(client_ids, num_clients):
 class WirelessFedODSimulator:
     def __init__(self, num_clients=3):
         self.train_data_list = None
-        self.test_data = None # Note: pre-preprocess the test data
+        self.test_data = None  # Note: pre-preprocess the test data
         self.federated_train_data = None
         self.model_fn = None
         self.agent_selection_fn = default_agent_selection
@@ -130,8 +129,14 @@ class WirelessFedODSimulator:
     def initialize_cars(self):
         print("Initializing cars")
         for i in range(self.num_clients):
-            car = Car(i, self.model_fn, self.train_data_list[i], self.test_data, self.time_started)
-            car.preprocessed_test_data = self.test_data # TODO: temporary interface
+            car = Car(
+                i,
+                self.model_fn,
+                self.train_data_list[i],
+                self.test_data,
+                self.time_started,
+            )
+            car.preprocessed_test_data = self.test_data  # TODO: temporary interface
             car.optimizer_fn = self.client_optimizer_fn
             car.preprocess_fn = self.preprocess_fn
             car.local_epochs = self.local_epochs
@@ -277,7 +282,7 @@ class WirelessFedODSimulator:
     #     self.train_state = self.training_process.initialize()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Set preprocess_fn
     def preprocess_fn(dataset, validation_dataset=False):
         def load_image(image_path):
@@ -293,7 +298,10 @@ if __name__ == '__main__':
                 "classes": tf.cast(classes, dtype=tf.float32),
                 "boxes": bboxes,
             }
-            return {"images": tf.cast(image, tf.float32), "bounding_boxes": bounding_boxes}
+            return {
+                "images": tf.cast(image, tf.float32),
+                "bounding_boxes": bounding_boxes,
+            }
 
         # def dict_to_tuple_fn(element):
         #     return element["images"], element["bounding_boxes"]
@@ -305,13 +313,19 @@ if __name__ == '__main__':
 
         if validation_dataset:
             augmenters = [
-                keras_cv.layers.Resizing(640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy")
+                keras_cv.layers.Resizing(
+                    640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy"
+                )
             ]
         else:
             augmenters = [
-                keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
+                keras_cv.layers.RandomFlip(
+                    mode="horizontal", bounding_box_format="xyxy"
+                ),
                 keras_cv.layers.JitteredResize(
-                    target_size=(640, 640), scale_factor=(0.75, 1.3), bounding_box_format="xyxy"
+                    target_size=(640, 640),
+                    scale_factor=(0.75, 1.3),
+                    bounding_box_format="xyxy",
                 ),
             ]
 
@@ -335,12 +349,13 @@ if __name__ == '__main__':
         dataset = dataset.prefetch(tf.data.AUTOTUNE)
         return dataset
 
-
     simulator = WirelessFedODSimulator()
     simulator.preprocess_fn = preprocess_fn
 
     # Load ZOD dataset
-    zod_train, zod_test = load_zod_federated(num_clients=simulator.num_clients, version='full', upper_bound=99)
+    zod_train, zod_test = load_zod_federated(
+        num_clients=simulator.num_clients, version="full", upper_bound=99
+    )
     # example_dataset = zod_train.create_tf_dataset_for_client(zod_train.client_ids[0])
     # preprocessed_example_dataset = simulator.preprocess_fn(example_dataset)
 
@@ -377,7 +392,7 @@ if __name__ == '__main__':
                 # "yolo_v8_xs_backbone_coco"
                 "yolo_v8_xs_backbone"
             ),
-            fpn_depth=2
+            fpn_depth=2,
         )
         base_lr = 0.005
         # including a global_clipnorm is extremely important in object detection tasks
@@ -396,7 +411,6 @@ if __name__ == '__main__':
         #     "yolo_v8_m_pascalvoc", bounding_box_format="xyxy"
         # )
         return model
-
 
     # Set dataset, model_fn, and agent_selection_fn
     simulator.train_data_list = zod_train
