@@ -5,7 +5,7 @@ import tensorflow as tf
 from dataset import OBJECT_CLASSES, load_zod_federated
 from simulator import WirelessFedODSimulator
 
-BATCH_SIZE = 4
+BATCH_SIZE = 1
 
 
 def load_image(image_path):
@@ -32,40 +32,24 @@ def dict_to_tuple_fn(inputs):
 
 # Set preprocess_fn
 def preprocess_fn(dataset, validation_dataset=False):
-    if validation_dataset:
-        augmenters = [
-            keras_cv.layers.Resizing(
-                640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy"
-            )
-        ]
-    else:
-        augmenters = [
-            keras_cv.layers.RandomFlip(
-                mode="horizontal", bounding_box_format="xyxy"
-            ),
-            keras_cv.layers.JitteredResize(
-                target_size=(640, 640),
-                scale_factor=(0.75, 1.3),
-                bounding_box_format="xyxy",
-            ),
-        ]
-
     dataset = dataset.map(format_element_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.shuffle(BATCH_SIZE * 4)
+    if validation_dataset:
+        augmenters = keras_cv.layers.Augmenter(
+            [
+                keras_cv.layers.Resizing(640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy"),
+            ],
+        )
+    else:
+        dataset = dataset.shuffle(BATCH_SIZE * 10, seed=1)
+        augmenters = keras_cv.layers.Augmenter(
+            [
+                keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
+                keras_cv.layers.JitteredResize(target_size=(640, 640), scale_factor=(0.75, 1.3), bounding_box_format="xyxy",),
+            ],
+        )
     dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
-
-    def create_augmenter_fn(augmenters):
-        def augmenter_fn(inputs):
-            for augmenter in augmenters:
-                inputs = augmenter(inputs)
-            return inputs
-
-        return augmenter_fn
-
-    augmenter_fn = create_augmenter_fn(augmenters)
-    dataset = dataset.map(augmenter_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.map(augmenters, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.map(dict_to_tuple_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.repeat(2)  # Repeat for more epochs TODO: set this correctly
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
 
