@@ -1,5 +1,6 @@
 import collections
 import datetime
+import math
 
 import keras
 import keras_cv
@@ -55,6 +56,48 @@ def visualize_detections(model, dataset, bounding_box_format="xyxy"):
     )
     plt.show()
 
+def weight_scalling_factor(cars, car):
+    # client_names = list(cars.keys())
+    #get the bs
+    # bs = list(cars[car])[0][0].shape[0]
+    bs = BATCH_SIZE
+    #first calculate the total training data points across clinets
+    # global_count = sum([tf.data.experimental.cardinality(clients_trn_data[client_name]).numpy() for client_name in client_names])*bs
+    global_count = sum([tf.data.experimental.cardinality(carx.train_data).numpy() for carx in cars])*bs
+    # get the total number of data points held by a client
+    local_count = tf.data.experimental.cardinality(car.train_data).numpy()*bs
+    return local_count/global_count
+
+
+def scale_model_weights(weight, scalar):
+    '''function for scaling a models weights'''
+    weight_final = []
+    steps = len(weight)
+    for i in range(steps):
+        weight_final.append(scalar * weight[i])
+    return weight_final
+
+
+
+def sum_scaled_weights(scaled_weight_list):
+    '''Return the sum of the listed scaled weights. The is equivalent to scaled avg of the weights'''
+    avg_grad = list()
+    #get the average grad accross all client gradients
+    for grad_list_tuple in zip(*scaled_weight_list):
+        layer_mean = tf.math.reduce_sum(grad_list_tuple, axis=0)
+        avg_grad.append(layer_mean)
+        
+    return avg_grad
+
+def fedavg_aggregate(cars, cars_this_round):
+    scaled_local_weight_list = list()
+    for car in cars_this_round:
+        scaling_factor = weight_scalling_factor(cars, car)
+        scaled_weights = scale_model_weights(car.weights, scaling_factor)
+        scaled_local_weight_list.append(scaled_weights)
+    average_weights = sum_scaled_weights(scaled_local_weight_list)
+    return average_weights
+
 
 class VisualizeDetections(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs):
@@ -80,10 +123,11 @@ def default_preprocess(self, dataset):
     )
 
 
-def default_agent_selection(client_ids, num_clients):
-    clients = np.random.choice(client_ids, num_clients // 2, replace=False)
+def default_agent_selection(self, cars):
+    """Select half of the clients randomly."""
+    clients = np.random.choice(cars, len(cars) // 2, replace=False)
     if len(clients) == 0:
-        clients = client_ids
+        clients = cars
     return clients
 
 
@@ -127,6 +171,17 @@ class WirelessFedODSimulator:
 
     # TODO: Handle the dataset in a more generic way
     def initialize_cars(self):
+        if self.train_data_list is None:
+            raise ValueError("Training data is not set.")
+        if self.test_data is None:
+            raise ValueError("Test data is not set.")
+        if self.model_fn is None:
+            raise ValueError("Model function is not set.")
+        if self.preprocess_fn is None:
+            raise ValueError("Preprocess function is not set.")
+        if self.client_optimizer_fn is None:
+            raise ValueError("Client optimizer function is not set.")
+
         print("Initializing cars")
         for i in range(self.num_clients):
             car = Car(
@@ -178,28 +233,31 @@ class WirelessFedODSimulator:
         if self.global_weights is None or self.cars == []:
             self.initialize()
 
-        cars_this_round = self.agent_selection_fn(self.cars, self.num_clients)
-        if len(cars_this_round) == 0:
+        self.cars_this_round = self.agent_selection_fn(self, self.cars)
+        if len(self.cars_this_round) == 0:
             raise ValueError("No clients selected.")
 
         # print(f"Selected clients: {cars_this_round}")
         print("Selected clients:", end=" ")
-        print(", ".join(str(car) for car in cars_this_round))
+        print(", ".join(str(car) for car in self.cars_this_round))
 
-        for car in tqdm(cars_this_round, desc="Training cars"):
+        for car in tqdm(self.cars_this_round, desc="Training cars"):
             keras.backend.clear_session()
             car.weights = self.global_weights
             car.train()
 
         # Update global weights with the scaled average of the local weights
-        total_samples = sum(len(car.train_data) for car in cars_this_round)
+        total_samples = sum(len(car.train_data) for car in self.cars_this_round)
         weighted_weights = [
             [layer * len(car.train_data) / total_samples for layer in car.weights]
-            for car in cars_this_round
+            for car in self.cars_this_round
         ]
         self.global_weights = [
             np.average(weights, axis=0) for weights in zip(*weighted_weights)
         ]
+
+        # reference implementation
+        self.global_weights = fedavg_aggregate(self.cars, self.cars_this_round)
 
         self.round_num += 1
         self.evaluate()
