@@ -5,9 +5,6 @@ import tensorflow as tf
 from dataset import OBJECT_CLASSES, load_zod_federated
 from simulator import WirelessFedODSimulator
 
-# keras.mixed_precision.set_global_policy('mixed_float16')
-np.random.seed(0)
-
 BATCH_SIZE = 4
 
 
@@ -16,7 +13,6 @@ def preprocess_fn(dataset, validation_dataset=False):
     def load_image(image_path):
         image = tf.io.read_file(image_path)
         image = tf.image.decode_jpeg(image, channels=3)
-        # image = keras.utils.load_img(image_path)
         return image
 
     def format_element_fn(image_path, classes, bboxes):
@@ -30,9 +26,6 @@ def preprocess_fn(dataset, validation_dataset=False):
             "images": tf.cast(image, tf.float32),
             "bounding_boxes": bounding_boxes,
         }
-
-    # def dict_to_tuple_fn(element):
-    #     return element["images"], element["bounding_boxes"]
 
     def dict_to_tuple_fn(inputs):
         return inputs["images"], keras_cv.bounding_box.to_dense(
@@ -61,7 +54,6 @@ def preprocess_fn(dataset, validation_dataset=False):
     dataset = dataset.shuffle(BATCH_SIZE * 4)
     dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
 
-    # dataset = dataset.map(augmenter, num_parallel_calls=tf.data.AUTOTUNE)
     def create_augmenter_fn(augmenters):
         def augmenter_fn(inputs):
             for augmenter in augmenters:
@@ -79,35 +71,10 @@ def preprocess_fn(dataset, validation_dataset=False):
 
 # Create model_fn
 def model_fn():
-    # model = keras_cv.models.RetinaNet.from_preset(
-    #     "resnet50",
-    #     bounding_box_format="xyxy",
-    #     num_classes=len(OBJECT_CLASSES),
-    # )
-    # model.compile(
-    #     classification_loss="focal",
-    #     box_loss="smoothl1",
-    #     metrics=['accuracy'],
-    #     optimizer=keras.optimizers.SGD(global_clipnorm=10.0),
-    #     jit_compile="auto",
-    # )
-    # model = keras_cv.models.YOLOV8Detector.from_preset(
-    #     "resnet50_imagenet",
-    #     # "yolo_v8_m_pascalvoc",
-    #     # For more info on supported bounding box formats, visit
-    #     # https://keras.io/api/keras_cv/bounding_box/
-    #     bounding_box_format="xyxy",
-    #     num_classes=len(OBJECT_CLASSES),
-    # )
-    # model = keras_cv.models.YOLOV8Backbone.from_preset(
-    #     "yolo_v8_xs_backbone_coco",
-    #     load_weights=False,
-    # )
     model = keras_cv.models.YOLOV8Detector(
         num_classes=len(OBJECT_CLASSES),
         bounding_box_format="xyxy",
         backbone=keras_cv.models.YOLOV8Backbone.from_preset(
-            # "yolo_v8_xs_backbone_coco"
             "yolo_v8_xs_backbone"
         ),
         fpn_depth=2,
@@ -120,14 +87,8 @@ def model_fn():
     model.compile(
         classification_loss="binary_crossentropy",
         box_loss="ciou",
-        # loss=keras_cv.losses.CIoULoss(bounding_box_format="xyxy"),
-        # loss='mse',
         optimizer=optimizer,
-        # metrics=['accuracy']
     )
-    # return keras_cv.models.YOLOV8Detector.from_preset(
-    #     "yolo_v8_m_pascalvoc", bounding_box_format="xyxy"
-    # )
     return model
 
 if __name__ == "__main__":
@@ -138,19 +99,9 @@ if __name__ == "__main__":
     zod_train, zod_test = load_zod_federated(
         num_clients=simulator.num_clients, version="full", upper_bound=99
     )
-    # example_dataset = zod_train.create_tf_dataset_for_client(zod_train.client_ids[0])
-    # preprocessed_example_dataset = simulator.preprocess_fn(example_dataset)
 
     # Set dataset, model_fn, and agent_selection_fn
     simulator.train_data_list = zod_train
-    # simulator.test_data = zod_test
     simulator.test_data = preprocess_fn(zod_test, validation_dataset=True)
     simulator.model_fn = model_fn
-    # simulator.agent_selection_fn = lambda x, y: np.random.choice(x.client_ids, y, replace=False)
-    # Set optimizers
-    # simulator.client_optimizer_fn = lambda: keras.optimizers.Adam(learning_rate=0.001)
-    # simulator.server_optimizer_fn = lambda: keras.optimizers.Adam(learning_rate=0.1)
-    # Run training
-    # for _ in range(5):
-    #     simulator.run_round()
     simulator.run_round()

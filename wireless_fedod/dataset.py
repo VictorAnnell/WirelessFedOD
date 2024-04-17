@@ -24,7 +24,6 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
         frame_classes = []
         frame_has_2d_bbox = False
         frame = zod_frames[frame_id]
-        # image = frame.get_image(Anonymization.DNAT)
         image_path = frame.info.get_key_camera_frame(Anonymization.BLUR).filepath
         annotations = frame.get_annotation(AnnotationProject.OBJECT_DETECTION)
         for annotation in annotations:
@@ -49,12 +48,6 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
     )
     classes_tensor = tf.ragged.constant(class_ids)
     image_paths_tensor = tf.ragged.constant(image_paths)
-    # dataset_dict = collections.OrderedDict(
-    #     image_path=image_paths_tensor,
-    #     classes=classes_tensor,
-    #     bbox=bbox_tensor
-    # )
-    # dataset = tf.data.Dataset.from_tensor_slices(dataset_dict)
     dataset = tf.data.Dataset.from_tensor_slices(
         (image_paths_tensor, classes_tensor, converted_bbox_tensor)
     )
@@ -176,89 +169,3 @@ def load_zod_federated(
     )
 
     return training_dataset_list, validation_dataset
-
-
-def load_zod2(num_clients=5, seed=0):
-    client_ids = list(range(num_clients))
-
-    def serializable_dataset_fn(client_id):
-        # NOTE! Set the path to dataset and choose a version
-        dataset_root = "./datasets"
-        version = "mini"  # "mini" or "full"
-        # initialize ZodFrames
-        zod_frames = ZodFrames(dataset_root=dataset_root, version=version)
-        # get default training and validation splits
-        training_frames = zod_frames.get_split(constants.TRAIN)
-
-        def get_random_sized_subset(input_list, client_id, num_clients, seed):
-            random.seed(seed)
-            # Generate random subset sizes
-            total_elements = len(input_list)
-            subset_sizes = [
-                random.randint(1, total_elements // num_clients + 1)
-                for _ in range(num_clients)
-            ]
-            # Adjust the last subset size if the sum exceeds the list length
-            while sum(subset_sizes) > total_elements:
-                subset_sizes[-1] -= 1
-            # Allocate subsets based on these sizes
-            subsets = []
-            start_index = 0
-            for size in subset_sizes:
-                subsets.append(input_list[start_index : start_index + size])
-                start_index += size
-            # Check if client_id is valid
-            if client_id < 0 or client_id >= num_clients:
-                raise ValueError("Invalid client_id")
-            return subsets[client_id]
-
-        client_frame_ids = get_random_sized_subset(
-            list(training_frames), client_id, num_clients, seed
-        )
-        dataset = create_dataset(zod_frames, client_frame_ids)
-        return dataset
-
-    def serializable_dataset_fn_val(client_id):
-        # NOTE! Set the path to dataset and choose a version
-        dataset_root = "./datasets"
-        version = "mini"  # "mini" or "full"
-        # initialize ZodFrames
-        zod_frames = ZodFrames(dataset_root=dataset_root, version=version)
-        # get default training and validation splits
-        training_frames = zod_frames.get_split(constants.VAL)
-
-        def get_random_sized_subset(input_list, client_id, num_clients, seed):
-            random.seed(seed)
-            # Generate random subset sizes
-            total_elements = len(input_list)
-            subset_sizes = [
-                random.randint(1, total_elements // num_clients + 1)
-                for _ in range(num_clients)
-            ]
-            # Adjust the last subset size if the sum exceeds the list length
-            while sum(subset_sizes) > total_elements:
-                subset_sizes[-1] -= 1
-            # Allocate subsets based on these sizes
-            subsets = []
-            start_index = 0
-            for size in subset_sizes:
-                subsets.append(input_list[start_index : start_index + size])
-                start_index += size
-            # Check if client_id is valid
-            if client_id < 0 or client_id >= num_clients:
-                raise ValueError("Invalid client_id")
-            return subsets[client_id]
-
-        client_frame_ids = get_random_sized_subset(
-            list(training_frames), client_id, num_clients, seed
-        )
-        dataset = create_dataset(zod_frames, client_frame_ids)
-        return dataset
-
-    client_data_train = tff.simulation.datasets.ClientData.from_clients_and_tf_fn(
-        client_ids, serializable_dataset_fn
-    )
-    client_data_val = tff.simulation.datasets.ClientData.from_clients_and_tf_fn(
-        client_ids, serializable_dataset_fn_val
-    )
-    return client_data_train, client_data_val

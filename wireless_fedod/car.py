@@ -11,17 +11,13 @@ class Car:
         self.id = id
         self.local_epochs = local_epochs
         self.location = (random.uniform(-100, 100), random.uniform(-100, 100))
-        self.classification_loss = "binary_crossentropy"
-        self.box_loss = "ciou"
         self.model_fn = model_fn
-        self.optimizer_fn = None
         self.preprocess_fn = None
         self.test_data = test_data
         self.train_data = train_data
         self.preprocessed_test_data = None
         self.preprocessed_train_data = None
         self.weights = None
-        self.metrics = None
         self.simulation_id = simulation_id
 
         # Callbacks
@@ -44,10 +40,6 @@ class Car:
     def train(self):
         if self.model_fn is None:
             raise ValueError("Model function is not set.")
-        if self.optimizer_fn is None:
-            raise ValueError("Optimizer is not set.")
-        # if self.metrics is None:
-        #     raise ValueError("Metrics are not set.")
         if self.train_data is None:
             raise ValueError("Training data is not set.")
         if self.test_data is None:
@@ -75,5 +67,4 @@ class Car:
             callbacks=self.callbacks,
             verbose=2,
         )
-        # model(preprocessed_train_data)
         self.weights = model.get_weights()

@@ -10,32 +10,10 @@ from car import Car
 from dataset import class_mapping
 from tqdm.auto import tqdm
 
-# keras.mixed_precision.set_global_policy('mixed_float16')
-np.random.seed(0)
-
 BATCH_SIZE = 4
 
 
-def visualize_dataset(inputs, value_range, rows, cols, bounding_box_format):
-    inputs = next(iter(inputs.take(1)))
-    images, bounding_boxes = inputs
-    keras_cv.visualization.plot_bounding_box_gallery(
-        images,
-        value_range=value_range,
-        rows=rows,
-        cols=cols,
-        y_true=bounding_boxes,
-        scale=5,
-        font_scale=0.7,
-        bounding_box_format=bounding_box_format,
-        class_mapping=class_mapping,
-    )
-    plt.show()
-
-
 def visualize_detections(model, dataset, bounding_box_format="xyxy"):
-    # dataset = dataset.unbatch()
-    # dataset.ragged_batch(4)
     dataset = dataset.shuffle(100)
     images, y_true = next(iter(dataset.take(1)))
     y_pred = model.predict(images)
@@ -56,12 +34,9 @@ def visualize_detections(model, dataset, bounding_box_format="xyxy"):
     plt.show()
 
 def weight_scalling_factor(cars, car):
-    # client_names = list(cars.keys())
     #get the bs
-    # bs = list(cars[car])[0][0].shape[0]
     bs = BATCH_SIZE
     #first calculate the total training data points across clinets
-    # global_count = sum([tf.data.experimental.cardinality(clients_trn_data[client_name]).numpy() for client_name in client_names])*bs
     global_count = sum([tf.data.experimental.cardinality(carx.train_data).numpy() for carx in cars])*bs
     # get the total number of data points held by a client
     local_count = tf.data.experimental.cardinality(car.train_data).numpy()*bs
@@ -97,14 +72,6 @@ def fedavg_aggregate(cars, cars_this_round):
     average_weights = sum_scaled_weights(scaled_local_weight_list)
     return average_weights
 
-
-class VisualizeDetections(keras.callbacks.Callback):
-    def on_epoch_end(self, epoch, logs):
-        visualize_detections(
-            self.model, bounding_box_format="xyxy", dataset=preprocessed_test_data
-        )
-
-
 def default_preprocess(self, dataset):
     def batch_format_fn(element):
         """Flatten a batch `pixels` and return the features as an `OrderedDict`."""
@@ -134,7 +101,6 @@ class WirelessFedODSimulator:
     def __init__(self, num_clients=3):
         self.train_data_list = None
         self.test_data = None  # Note: pre-preprocess the test data
-        self.federated_train_data = None
         self.model_fn = None
         self.agent_selection_fn = default_agent_selection
         self.preprocess_fn = default_preprocess
@@ -143,18 +109,9 @@ class WirelessFedODSimulator:
         self.shuffle_buffer = 100
         self.prefetch_buffer = 10
         self.round_num = 0
-        self.metrics = None
         self.cars = []
         self.global_weights = None
         self.num_clients = num_clients
-        self.training_process = None
-        self.train_state = None
-        self.train_result = None
-        self.sample_clients = None
-        self.client_optimizer_fn = lambda: keras.optimizers.SGD(
-            learning_rate=0.005, momentum=0.9, global_clipnorm=10.0
-        )
-        self.server_optimizer_fn = lambda: keras.optimizers.SGD(learning_rate=1.0)
         self.time_started = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         self.callbacks = [
             tf.keras.callbacks.TensorBoard(
@@ -168,8 +125,6 @@ class WirelessFedODSimulator:
             # keras_cv.callbacks.PyCOCOCallback(self.test_data, bounding_box_format="xyxy")
         ]
         self.file_writer = tf.summary.create_file_writer(f"logs/{self.time_started}/global/eval")
-        # file_writer.set_as_default()
-        self.importance_fn = None
 
     # TODO: Handle the dataset in a more generic way
     def initialize_cars(self):
@@ -181,8 +136,6 @@ class WirelessFedODSimulator:
             raise ValueError("Model function is not set.")
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
-        if self.client_optimizer_fn is None:
-            raise ValueError("Client optimizer function is not set.")
 
         print("Initializing cars")
         for i in range(self.num_clients):
@@ -194,28 +147,9 @@ class WirelessFedODSimulator:
                 self.time_started,
             )
             car.preprocessed_test_data = self.test_data  # TODO: temporary interface
-            car.optimizer_fn = self.client_optimizer_fn
             car.preprocess_fn = self.preprocess_fn
             car.local_epochs = self.local_epochs
             self.cars.append(car)
-
-    # @property
-    # def num_clients(self):
-    #     return len(self.cars)
-
-    def set_hyperparameters(
-        self,
-        num_clients=10,
-        local_epochs=5,
-        batch_size=20,
-        shuffle_buffer=100,
-        prefetch_buffer=10,
-    ):
-        self.num_clients = num_clients
-        self.local_epochs = local_epochs
-        self.batch_size = batch_size
-        self.shuffle_buffer = shuffle_buffer
-        self.prefetch_buffer = prefetch_buffer
 
     def initialize(self):
         self.round_num = 0
@@ -239,7 +173,6 @@ class WirelessFedODSimulator:
         if len(self.cars_this_round) == 0:
             raise ValueError("No clients selected.")
 
-        # print(f"Selected clients: {cars_this_round}")
         print("Selected clients:", end=" ")
         print(", ".join(str(car) for car in self.cars_this_round))
 
@@ -321,38 +254,3 @@ class WirelessFedODSimulator:
         else:
             print(f"loss: {result:.4f}", end=", ")
         print(end="\n\n")
-
-    # def make_federated_data(self, client_data, client_ids):
-    #     return [
-    #         self.preprocess_fn(client_data.create_tf_dataset_for_client(x))
-    #         for x in client_ids
-    #     ]
-
-    # def run_epoch(self):
-    #     if self.train_state is None or self.round_num is None:
-    #         self.initialize()
-    #     self.round_num += 1
-    #     self.sample_clients = self.agent_selection_fn(self.train_data, self.num_clients)
-    #     self.federated_train_data = self.make_federated_data(
-    #         self.train_data, self.sample_clients
-    #     )
-    #     self.train_result = self.training_process.next(
-    #         self.train_state, self.federated_train_data
-    #     )
-    #     self.train_state = self.train_result.state
-    #     self.metrics = self.train_result.metrics["client_work"]["train"]
-    #     # Format metrics to be one line
-    #     print("round {:2d}, ".format(self.round_num), end="")
-    #     print(f"num_clients: {len(self.sample_clients)}", end=", ")
-    #     self.print_metrics(self.train_result)
-
-    # def initialize(self):
-    #     self.round_num = 0
-    #     self.training_process = tff.learning.algorithms.build_weighted_fed_avg(
-    #         self.model_fn,
-    #         client_optimizer_fn=self.client_optimizer_fn,
-    #         server_optimizer_fn=self.server_optimizer_fn,
-    #     )
-    #
-    #     self.train_state = self.training_process.initialize()
-
