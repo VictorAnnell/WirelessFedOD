@@ -166,8 +166,11 @@ class WirelessFedODSimulator:
                 write_steps_per_second=True,
             ),
             # VisualizeDetections(),
-            # keras_cv.callbacks.PyCOCOCallback(preprocessed_test_data, bounding_box_format="xyxy")
+            # keras_cv.callbacks.PyCOCOCallback(self.test_data, bounding_box_format="xyxy")
         ]
+        self.file_writer = tf.summary.create_file_writer(f"logs/{self.time_started}/global/eval")
+        # file_writer.set_as_default()
+        self.importance_fn = None
 
     # TODO: Handle the dataset in a more generic way
     def initialize_cars(self):
@@ -276,7 +279,22 @@ class WirelessFedODSimulator:
         model = self.model_fn()
         model.set_weights(self.global_weights)
         # preprocessed_test_data = self.preprocess_fn(self.test_data) # TODO: Preprocess only once
-        result = model.evaluate(self.test_data, callbacks=self.callbacks, verbose=2)
+        callbacks = [
+            keras_cv.callbacks.PyCOCOCallback(
+                self.test_data, bounding_box_format="xyxy"
+            ),
+            tf.keras.callbacks.TensorBoard(
+                log_dir=f"logs/{self.time_started}/global",
+                histogram_freq=1,
+                write_graph=True,
+                write_images=True,
+                write_steps_per_second=True,
+            ),
+        ]
+        result = model.evaluate(self.test_data, callbacks=callbacks, verbose=2, steps=self.test_data.element_spec[0].shape[0])
+        # tf.summary.scalar("loss", result, step=self.round_num)
+        with self.file_writer.as_default(step=self.round_num):
+            tf.summary.scalar("loss", result)
         self.print_metrics(model, result)
 
     def visualize_detections(self):

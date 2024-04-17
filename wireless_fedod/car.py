@@ -1,5 +1,6 @@
 import random
 
+import keras_cv
 import tensorflow as tf
 
 
@@ -21,8 +22,21 @@ class Car:
         self.preprocessed_train_data = None
         self.weights = None
         self.metrics = None
-        self.callbacks = []
         self.simulation_id = simulation_id
+
+        # Callbacks
+        self.callbacks = []
+        self.callbacks.append(keras_cv.callbacks.PyCOCOCallback(self.test_data, bounding_box_format="xyxy"))
+        log_dir = f"logs/{self.simulation_id}/cars/{self.id}"
+        self.callbacks.append(
+            tf.keras.callbacks.TensorBoard(
+                log_dir=log_dir,
+                histogram_freq=1,
+                write_graph=True,
+                write_images=True,
+                write_steps_per_second=True,
+            )
+        )
 
     def __str__(self):
         return f"Car {self.id}"
@@ -51,18 +65,6 @@ class Car:
             print("Preprocessing test data for", self)
             self.preprocessed_test_data = self.preprocess_fn(self.test_data)
 
-        # Callbacks
-        # self.callbacks.append(keras_cv.callbacks.PyCOCOCallback(self.test_data, bounding_box_format="xyxy"))
-        log_dir = f"logs/{self.simulation_id}/cars/{self.id}"
-        self.callbacks.append(
-            tf.keras.callbacks.TensorBoard(
-                log_dir=log_dir,
-                histogram_freq=1,
-                write_graph=True,
-                write_images=True,
-                write_steps_per_second=True,
-            )
-        )
 
         print(f"Training {self}")
 
