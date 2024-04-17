@@ -1,6 +1,7 @@
 import random
 
 import keras_cv
+import numpy as np
 import tensorflow as tf
 import zod.constants as constants
 from tqdm.auto import tqdm
@@ -106,6 +107,32 @@ def load_zod(version="mini", seed=0, bounding_box_format="xyxy", upper_bound=Non
     )
 
     return training_dataset, validation_dataset
+
+def noniid_split_dataset(dataset: 'tf.data.Dataset', num_splits: int, alpha: int = 1) -> list('tf.data.Dataset'):
+    """
+    Split a dataset into num_splits non-iid datasets.
+    """
+    if num_splits > len(dataset):
+        raise ValueError("Number of splits cannot exceed the number of elements in dataset.")
+
+    # Assign one element to each split to ensure that each split is non-empty
+    base_dataset = dataset.take(num_splits)
+    dataset = dataset.skip(num_splits)
+    # Generate Dirichlet distribution proportions
+    proportions = np.random.dirichlet(alpha * np.ones(num_splits))
+    # Calculate number of elements per split
+    num_elements = np.round(proportions * len(dataset)).astype(int)
+    # Shuffle the dataset
+    dataset = dataset.shuffle(buffer_size=1000)
+    # Distribute the dataset into num_splits
+    dataset_splits = []
+    for num in num_elements:
+        split_base = base_dataset.take(1)
+        base_dataset = base_dataset.skip(1)
+        dataset_splits.append(split_base.concatenate(dataset.take(num)))
+        dataset = dataset.skip(num)
+
+    return dataset_splits
 
 
 def load_zod_federated(
@@ -235,7 +262,3 @@ def load_zod2(num_clients=5, seed=0):
         client_ids, serializable_dataset_fn_val
     )
     return client_data_train, client_data_val
-
-
-if __name__ == "__main__":
-    load_zod2()
