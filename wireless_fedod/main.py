@@ -8,30 +8,30 @@ from simulator import WirelessFedODSimulator
 BATCH_SIZE = 4
 
 
+def load_image(image_path):
+    image = tf.io.read_file(image_path)
+    image = tf.image.decode_jpeg(image, channels=3)
+    return image
+
+def format_element_fn(image_path, classes, bboxes):
+    # Create a dictionary with the image and bounding boxes as required by KerasCV
+    image = load_image(image_path)
+    bounding_boxes = {
+        "classes": tf.cast(classes, dtype=tf.float32),
+        "boxes": bboxes,
+    }
+    return {
+        "images": tf.cast(image, tf.float32),
+        "bounding_boxes": bounding_boxes,
+    }
+
+def dict_to_tuple_fn(inputs):
+    return inputs["images"], keras_cv.bounding_box.to_dense(
+        inputs["bounding_boxes"], max_boxes=32
+    )
+
 # Set preprocess_fn
 def preprocess_fn(dataset, validation_dataset=False):
-    def load_image(image_path):
-        image = tf.io.read_file(image_path)
-        image = tf.image.decode_jpeg(image, channels=3)
-        return image
-
-    def format_element_fn(image_path, classes, bboxes):
-        # Create a dictionary with the image and bounding boxes as required by KerasCV
-        image = load_image(image_path)
-        bounding_boxes = {
-            "classes": tf.cast(classes, dtype=tf.float32),
-            "boxes": bboxes,
-        }
-        return {
-            "images": tf.cast(image, tf.float32),
-            "bounding_boxes": bounding_boxes,
-        }
-
-    def dict_to_tuple_fn(inputs):
-        return inputs["images"], keras_cv.bounding_box.to_dense(
-            inputs["bounding_boxes"], max_boxes=32
-        )
-
     if validation_dataset:
         augmenters = [
             keras_cv.layers.Resizing(
