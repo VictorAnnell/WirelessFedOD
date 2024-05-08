@@ -12,7 +12,25 @@ from tqdm.auto import tqdm
 
 BATCH_SIZE = 1
 
-def visualize_detections(model, dataset, bounding_box_format="xyxy"):
+def visualize_dataset(dataset, bounding_box_format="xyxy"):
+    dataset = dataset.shuffle(100)
+    images, y_true = next(iter(dataset.take(1)))
+    keras_cv.visualization.plot_bounding_box_gallery(
+        images,
+        value_range=(0, 255),
+        bounding_box_format=bounding_box_format,
+        y_true=y_true,
+        scale=2,
+        rows=1,
+        cols=1,
+        show=True,
+        font_scale=0.7,
+        class_mapping=class_mapping,
+        legend=True,
+    )
+    plt.show()
+
+def visualize_detection(model, dataset, bounding_box_format="xyxy"):
     dataset = dataset.shuffle(100)
     images, y_true = next(iter(dataset.take(1)))
     y_pred = model.predict(images)
@@ -23,8 +41,8 @@ def visualize_detections(model, dataset, bounding_box_format="xyxy"):
         y_true=y_true,
         y_pred=y_pred,
         scale=4,
-        rows=2,
-        cols=2,
+        rows=1,
+        cols=1,
         show=True,
         font_scale=0.7,
         class_mapping=class_mapping,
@@ -212,7 +230,7 @@ class WirelessFedODSimulator:
         result = model.evaluate(self.test_data, callbacks=self.callbacks)
         self.print_metrics(model, result)
 
-    def visualize_detections(self):
+    def visualize_detection(self):
         if self.model_fn is None:
             raise ValueError("Model function is not set.")
         if self.test_data is None:
@@ -220,12 +238,29 @@ class WirelessFedODSimulator:
         # if self.preprocess_fn is None:
         #     raise ValueError("Preprocess function is not set.")
         if self.global_weights is None:
-            raise ValueError("Global weights are not set, run a round first.")
+            print("Global weights are not set, using initial weights")
+            self.initialize()
 
-        print("Visualizing detections")
+        print("Visualizing detection")
         model = self.model_fn()
         model.set_weights(self.global_weights)
-        visualize_detections(model, self.test_data)
+        visualize_detection(model, self.test_data)
+
+    def visualize_dataset(self, dataset_type="test"):
+        if dataset_type == "test":
+            if self.test_data is None:
+                raise ValueError("Test data is not set.")
+            dataset = self.test_data
+        elif dataset_type == "train":
+            if self.train_data is None:
+                raise ValueError("Train data is not set.")
+            dataset = self.preprocess_fn(self.train_data)
+        else:
+            raise ValueError("Invalid dataset type. Should be 'train' or 'test'")
+
+        print(f"Visualizing {dataset_type} dataset")
+        visualize_dataset(dataset)
+
 
     def print_metrics(self, model, result):
         print()
