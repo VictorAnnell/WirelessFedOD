@@ -89,5 +89,8 @@ if __name__ == "__main__":
     simulator.train_data = zod_train
     simulator.test_data = preprocess_fn(zod_test, validation_dataset=True)
     simulator.model_fn = model_fn
-    simulator.local_epochs = 1
+    simulator.num_clients = 1 # For testing
+    simulator.local_epochs = 1 # For testing
+    simulator.steps_per_local_epoch = 1 # For testing
+    # while simulator.metrics['loss'] > 1:
     simulator.run_round()

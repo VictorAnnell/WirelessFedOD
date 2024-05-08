@@ -122,6 +122,7 @@ class WirelessFedODSimulator:
         self.agent_selection_fn = default_agent_selection
         self.preprocess_fn = default_preprocess
         self.local_epochs = 1
+        self.steps_per_local_epoch = None
         self.batch_size = 20
         self.shuffle_buffer = 100
         self.prefetch_buffer = 10
@@ -160,9 +161,10 @@ class WirelessFedODSimulator:
                 self.model_fn,
                 train_data_splits[i],
                 self.time_started,
+                local_epochs=self.local_epochs,
+                steps_per_epoch=self.steps_per_local_epoch,
             )
             car.preprocess_fn = self.preprocess_fn
-            car.local_epochs = self.local_epochs
             self.cars.append(car)
 
     def initialize(self):
@@ -247,19 +249,19 @@ class WirelessFedODSimulator:
         model.set_weights(self.global_weights)
         visualize_detection(model, self.test_data)
 
-    def visualize_dataset(self, dataset_type="test"):
-        if dataset_type == "test":
+    def visualize_dataset(self, type="test"):
+        if type == "test":
             if self.test_data is None:
                 raise ValueError("Test data is not set.")
             dataset = self.test_data
-        elif dataset_type == "train":
+        elif type == "train":
             if self.train_data is None:
                 raise ValueError("Train data is not set.")
             dataset = self.preprocess_fn(self.train_data)
         else:
             raise ValueError("Invalid dataset type. Should be 'train' or 'test'")
 
-        print(f"Visualizing {dataset_type} dataset")
+        print(f"Visualizing {type} dataset")
         visualize_dataset(dataset)
 
 

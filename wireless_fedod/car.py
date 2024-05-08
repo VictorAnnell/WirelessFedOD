@@ -8,10 +8,11 @@ from typing import Callable
 
 class Car:
     def __init__(
-        self, id, model_fn: Callable[[], keras.Model], train_data: tf.data.Dataset, simulation_id: str, local_epochs: int = 1
+        self, id, model_fn: Callable[[], keras.Model], train_data: tf.data.Dataset, simulation_id: str, local_epochs: int = 1, steps_per_epoch = None
     ):
         self.id = id
         self.local_epochs = local_epochs
+        self.steps_per_epoch = steps_per_epoch
         self.location = (random.uniform(-100, 100), random.uniform(-100, 100))
         self.model_fn = model_fn
         self.preprocess_fn = None
@@ -77,6 +78,7 @@ class Car:
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
             callbacks=[coco_metrics_callback] + self.callbacks,
+            steps_per_epoch=self.steps_per_epoch,
         )
         print(result.history)
         self.weights = model.get_weights()
