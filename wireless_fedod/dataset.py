@@ -153,7 +153,7 @@ def load_zod_federated(
     client_ids = list(range(num_clients))
     training_dataset_list = []
 
-    for client_id in tqdm(client_ids):
+    for client_id in tqdm(client_ids, desc="Creating datasets"):
         client_frame_ids = get_random_sized_subset(
             list(training_frames), client_id, num_clients, seed
         )

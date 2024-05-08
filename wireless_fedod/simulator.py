@@ -10,8 +10,7 @@ from car import Car
 from dataset import class_mapping
 from tqdm.auto import tqdm
 
-BATCH_SIZE = 4
-
+BATCH_SIZE = 1
 
 def visualize_detections(model, dataset, bounding_box_format="xyxy"):
     dataset = dataset.shuffle(100)
@@ -98,13 +97,13 @@ def default_agent_selection(self, cars):
 
 
 class WirelessFedODSimulator:
-    def __init__(self, num_clients=3):
+    def __init__(self, num_clients=5):
         self.train_data_list = None
         self.test_data = None  # Note: pre-preprocess the test data
         self.model_fn = None
         self.agent_selection_fn = default_agent_selection
         self.preprocess_fn = default_preprocess
-        self.local_epochs = 5
+        self.local_epochs = 1
         self.batch_size = 20
         self.shuffle_buffer = 100
         self.prefetch_buffer = 10
@@ -114,15 +113,13 @@ class WirelessFedODSimulator:
         self.num_clients = num_clients
         self.time_started = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         self.callbacks = [
-            tf.keras.callbacks.TensorBoard(
+            keras.callbacks.TensorBoard(
                 log_dir=f"logs/{self.time_started}/global",
                 histogram_freq=1,
                 write_graph=True,
                 write_images=True,
                 write_steps_per_second=True,
             ),
-            # VisualizeDetections(),
-            # keras_cv.callbacks.PyCOCOCallback(self.test_data, bounding_box_format="xyxy")
         ]
         self.file_writer = tf.summary.create_file_writer(f"logs/{self.time_started}/global/eval")
 
@@ -143,10 +140,8 @@ class WirelessFedODSimulator:
                 i,
                 self.model_fn,
                 self.train_data_list[i],
-                self.test_data,
                 self.time_started,
             )
-            car.preprocessed_test_data = self.test_data  # TODO: temporary interface
             car.preprocess_fn = self.preprocess_fn
             car.local_epochs = self.local_epochs
             self.cars.append(car)
@@ -195,6 +190,10 @@ class WirelessFedODSimulator:
         self.global_weights = fedavg_aggregate(self.cars, self.cars_this_round)
 
         self.round_num += 1
+        # Communicate round number to cars
+        for car in self.cars:
+            car.round_num = self.round_num
+
         self.evaluate()
 
     def evaluate(self):
@@ -210,23 +209,7 @@ class WirelessFedODSimulator:
         print("Evaluating global model")
         model = self.model_fn()
         model.set_weights(self.global_weights)
-        # preprocessed_test_data = self.preprocess_fn(self.test_data) # TODO: Preprocess only once
-        callbacks = [
-            keras_cv.callbacks.PyCOCOCallback(
-                self.test_data, bounding_box_format="xyxy"
-            ),
-            tf.keras.callbacks.TensorBoard(
-                log_dir=f"logs/{self.time_started}/global",
-                histogram_freq=1,
-                write_graph=True,
-                write_images=True,
-                write_steps_per_second=True,
-            ),
-        ]
-        result = model.evaluate(self.test_data, callbacks=callbacks, verbose=2, steps=self.test_data.element_spec[0].shape[0])
-        # tf.summary.scalar("loss", result, step=self.round_num)
-        with self.file_writer.as_default(step=self.round_num):
-            tf.summary.scalar("loss", result)
+        result = model.evaluate(self.test_data, callbacks=self.callbacks)
         self.print_metrics(model, result)
 
     def visualize_detections(self):
@@ -244,13 +227,15 @@ class WirelessFedODSimulator:
         model.set_weights(self.global_weights)
         visualize_detections(model, self.test_data)
 
-    @staticmethod
-    def print_metrics(model, result):
+    def print_metrics(self, model, result):
         print()
         print("Round Metrics:")
-        if isinstance(result, list):
-            for name, value in zip(model.metrics_names, result):
-                print(f"{name}: {value:.4f}", end=", ")
-        else:
-            print(f"loss: {result:.4f}", end=", ")
+        with self.file_writer.as_default(step=self.round_num):
+            if isinstance(result, list):
+                for name, value in zip(model.metrics_names, result):
+                    print(f"{name}: {value:.4f}", end=", ")
+                    tf.summary.scalar(f"round_{name}", value)
+            else:
+                print(f"loss: {result:.4f}", end=", ")
+                tf.summary.scalar("round_loss", result)
         print(end="\n\n")

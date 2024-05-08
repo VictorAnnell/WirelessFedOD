@@ -3,9 +3,9 @@ import keras_cv
 import numpy as np
 import tensorflow as tf
 from dataset import OBJECT_CLASSES, load_zod_federated
-from simulator import WirelessFedODSimulator
+from simulator import WirelessFedODSimulator, BATCH_SIZE
 
-BATCH_SIZE = 1
+# BATCH_SIZE = 1
 
 
 def load_image(image_path):
@@ -54,7 +54,7 @@ def preprocess_fn(dataset, validation_dataset=False):
     return dataset
 
 # Create model_fn
-def model_fn():
+def model_fn() -> keras.Model:
     model = keras_cv.models.YOLOV8Detector(
         num_classes=len(OBJECT_CLASSES),
         bounding_box_format="xyxy",
@@ -76,16 +76,17 @@ def model_fn():
     return model
 
 if __name__ == "__main__":
-    simulator = WirelessFedODSimulator()
+    simulator = WirelessFedODSimulator(num_clients=5)
     simulator.preprocess_fn = preprocess_fn
 
     # Load ZOD dataset
     zod_train, zod_test = load_zod_federated(
-        num_clients=simulator.num_clients, version="full", upper_bound=99
+        num_clients=simulator.num_clients, version="full", upper_bound=150
     )
 
     # Set dataset, model_fn, and agent_selection_fn
     simulator.train_data_list = zod_train
     simulator.test_data = preprocess_fn(zod_test, validation_dataset=True)
     simulator.model_fn = model_fn
+    simulator.local_epochs = 1
     simulator.run_round()
