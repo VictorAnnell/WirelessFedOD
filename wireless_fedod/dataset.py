@@ -88,6 +88,10 @@ def load_zod(version="mini", seed=0, bounding_box_format="xyxy", upper_bound=Non
     training_frames = zod_frames.get_split(constants.TRAIN)
     validation_frames = zod_frames.get_split(constants.VAL)
 
+    # Check if training or validation sets are empty
+    if not training_frames or not validation_frames:
+        raise ValueError("Arguments resulted in empty training or validation set.")
+
     if upper_bound:
         training_frames = {x for x in training_frames if int(x) <= upper_bound}
         validation_frames = {x for x in validation_frames if int(x) <= upper_bound}

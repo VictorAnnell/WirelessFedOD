@@ -2,7 +2,7 @@ import keras
 import keras_cv
 import numpy as np
 import tensorflow as tf
-from dataset import OBJECT_CLASSES, load_zod_federated
+from dataset import OBJECT_CLASSES, load_zod
 from simulator import WirelessFedODSimulator, BATCH_SIZE
 
 # BATCH_SIZE = 1
@@ -80,12 +80,13 @@ if __name__ == "__main__":
     simulator.preprocess_fn = preprocess_fn
 
     # Load ZOD dataset
-    zod_train, zod_test = load_zod_federated(
-        num_clients=simulator.num_clients, version="full", upper_bound=150
+    zod_train, zod_test = load_zod(
+        # version="mini",
+        version="full", upper_bound=150
     )
 
     # Set dataset, model_fn, and agent_selection_fn
-    simulator.train_data_list = zod_train
+    simulator.train_data = zod_train
     simulator.test_data = preprocess_fn(zod_test, validation_dataset=True)
     simulator.model_fn = model_fn
     simulator.local_epochs = 1

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from car import Car
-from dataset import class_mapping
+from dataset import class_mapping, noniid_split_dataset
 from tqdm.auto import tqdm
 
 BATCH_SIZE = 1
@@ -116,7 +116,7 @@ def default_agent_selection(self, cars):
 
 class WirelessFedODSimulator:
     def __init__(self, num_clients=5):
-        self.train_data_list = None
+        self.train_data = None
         self.test_data = None  # Note: pre-preprocess the test data
         self.model_fn = None
         self.agent_selection_fn = default_agent_selection
@@ -143,7 +143,7 @@ class WirelessFedODSimulator:
 
     # TODO: Handle the dataset in a more generic way
     def initialize_cars(self):
-        if self.train_data_list is None:
+        if self.train_data is None:
             raise ValueError("Training data is not set.")
         if self.test_data is None:
             raise ValueError("Test data is not set.")
@@ -152,12 +152,13 @@ class WirelessFedODSimulator:
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
 
+        train_data_splits = noniid_split_dataset(self.train_data, self.num_clients)
         print("Initializing cars")
         for i in range(self.num_clients):
             car = Car(
                 i,
                 self.model_fn,
-                self.train_data_list[i],
+                train_data_splits[i],
                 self.time_started,
             )
             car.preprocess_fn = self.preprocess_fn
@@ -172,7 +173,7 @@ class WirelessFedODSimulator:
     def run_round(self):
         if self.model_fn is None:
             raise ValueError("Model function is not set.")
-        if self.train_data_list is None:
+        if self.train_data is None:
             raise ValueError("Training data is not set.")
         if self.test_data is None:
             raise ValueError("Test data is not set.")

@@ -80,3 +80,6 @@ class Car:
         )
         print(result.history)
         self.weights = model.get_weights()
+
+        self.preprocessed_test_data = None
+        self.preprocessed_train_data = None
