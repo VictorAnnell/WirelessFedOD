@@ -1,5 +1,6 @@
 import random
 
+import numpy as np
 import keras_cv
 import keras
 import tensorflow as tf
@@ -20,10 +21,13 @@ class Car:
         self.train_data = train_data
         self.preprocessed_test_data = None
         self.preprocessed_train_data = None
-        self.weights = None
+        self.local_weights = None
+        self.global_weights = None
         self.simulation_id = simulation_id
         self.test_split = 0.2
         self.round_num = 0
+        self.deviation = None
+        self.loss = None
 
         # Callbacks
         self.callbacks = []
@@ -57,7 +61,7 @@ class Car:
             raise ValueError("Preprocess function is not set.")
 
         model = self.model_fn()
-        model.set_weights(self.weights)
+        model.set_weights(self.global_weights)
 
         if self.preprocessed_train_data is None:
             print("Preprocessing train data for", self)
@@ -69,19 +73,31 @@ class Car:
 
         print(f"Training {self}")
 
-        coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
-            self.preprocessed_test_data, bounding_box_format="xyxy"
-        )
+        # coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
+        #     self.preprocessed_test_data, bounding_box_format="xyxy"
+        # )
         result = model.fit(
             self.preprocessed_train_data,
             validation_data=self.preprocessed_test_data,
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
-            callbacks=[coco_metrics_callback] + self.callbacks,
+            # callbacks=[coco_metrics_callback] + self.callbacks,
+            callbacks=self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
         print(result.history)
-        self.weights = model.get_weights()
+        self.local_weights = model.get_weights()
 
+        # Set loss
+        self.loss = result.history["loss"][-1]
+
+        # Set deviation
+        flt_global_weights = np.concatenate(np.asanyarray(self.global_weights, dtype=object), axis=None)
+        flt_local_weights = np.concatenate(np.asanyarray(self.local_weights, dtype=object), axis=None)
+        self.deviation = np.linalg.norm(flt_global_weights - flt_local_weights)
+        print(f"{self} deviation: {self.deviation}, local weights sum: {np.sum(flt_local_weights)}, global weights sum: {np.sum(flt_global_weights)}")
+
+
+        # Clear preproccessed data to save memory
         self.preprocessed_test_data = None
         self.preprocessed_train_data = None

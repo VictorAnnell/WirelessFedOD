@@ -84,7 +84,7 @@ def fedavg_aggregate(cars, cars_this_round):
     scaled_local_weight_list = list()
     for car in cars_this_round:
         scaling_factor = weight_scalling_factor(cars, car)
-        scaled_weights = scale_model_weights(car.weights, scaling_factor)
+        scaled_weights = scale_model_weights(car.local_weights, scaling_factor)
         scaled_local_weight_list.append(scaled_weights)
     average_weights = sum_scaled_weights(scaled_local_weight_list)
     return average_weights
@@ -119,6 +119,7 @@ class WirelessFedODSimulator:
         self.train_data = None
         self.test_data = None  # Note: pre-preprocess the test data
         self.model_fn = None
+        self.metrics = {}
         self.agent_selection_fn = default_agent_selection
         self.preprocess_fn = default_preprocess
         self.local_epochs = 1
@@ -194,13 +195,13 @@ class WirelessFedODSimulator:
 
         for car in tqdm(self.cars_this_round, desc="Training cars"):
             keras.backend.clear_session()
-            car.weights = self.global_weights
+            car.global_weights = self.global_weights
             car.train()
 
         # Update global weights with the scaled average of the local weights
         total_samples = sum(len(car.train_data) for car in self.cars_this_round)
         weighted_weights = [
-            [layer * len(car.train_data) / total_samples for layer in car.weights]
+            [layer * len(car.train_data) / total_samples for layer in car.local_weights]
             for car in self.cars_this_round
         ]
         self.global_weights = [
@@ -231,6 +232,11 @@ class WirelessFedODSimulator:
         model = self.model_fn()
         model.set_weights(self.global_weights)
         result = model.evaluate(self.test_data, callbacks=self.callbacks)
+        # Store metrics
+        if isinstance(result, list):
+            self.metrics = dict(zip(model.metrics_names, result))
+        else:
+            self.metrics = {"loss": result}
         self.print_metrics(model, result)
 
     def visualize_detection(self):
