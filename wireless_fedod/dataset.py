@@ -4,17 +4,13 @@ import keras_cv
 import numpy as np
 import tensorflow as tf
 import zod.constants as constants
+from config import BATCH_SIZE, CLASS_MAPPING, DATASET_ROOT, DATASET_VERSION, SHUFFLE_BUFFER_SIZE
 from tqdm.auto import tqdm
 from utils import dict_to_tuple_fn, format_element_fn
 from zod import ZodFrames
-from zod.anno.object import OBJECT_CLASSES
 from zod.constants import AnnotationProject, Anonymization
 
 random.seed(0)
-
-class_mapping = dict(zip(range(len(OBJECT_CLASSES)), OBJECT_CLASSES))
-
-BATCH_SIZE = 1  # TODO: make this configurable
 
 
 # Data pipeline preprocessing function
@@ -27,7 +23,7 @@ def preprocess_fn(dataset, validation_dataset=False):
             ],
         )
     else:
-        dataset = dataset.shuffle(BATCH_SIZE * 10, seed=1)
+        dataset = dataset.shuffle(SHUFFLE_BUFFER_SIZE, seed=1)
         augmenters = keras_cv.layers.Augmenter(
             [
                 keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
@@ -68,7 +64,7 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
             bbox.append(frame_bboxs)
             # Convert classes to class_ids
             frame_class_ids = [
-                list(class_mapping.keys())[list(class_mapping.values()).index(cls)] for cls in frame_classes
+                list(CLASS_MAPPING.keys())[list(CLASS_MAPPING.values()).index(cls)] for cls in frame_classes
             ]
             class_ids.append(frame_class_ids)
     bbox_tensor = tf.ragged.constant(bbox)
@@ -100,9 +96,8 @@ def get_random_sized_subset(input_list, client_id, num_clients, seed):
     return subsets[client_id]
 
 
-def load_zod(version="mini", seed=0, bounding_box_format="xyxy", upper_bound=None):
-    # NOTE! Set the path to dataset and choose a version
-    dataset_root = "../datasets"
+def load_zod(version=DATASET_VERSION, seed=0, bounding_box_format="xyxy", upper_bound=None):
+    dataset_root = DATASET_ROOT
     version = version  # "mini" or "full"
 
     # initialize ZodFrames
@@ -132,23 +127,23 @@ def noniid_split_dataset(dataset: "tf.data.Dataset", num_splits: int, alpha: int
     """
     Split a dataset into num_splits non-iid datasets.
     """
-    if num_splits > len(dataset):
-        raise ValueError("Number of splits cannot exceed the number of elements in dataset.")
+    if num_splits * 2 > len(dataset):
+        raise ValueError("Number of splits must be equal to or less than half the dataset size.")
 
-    # Assign one element to each split to ensure that each split is non-empty
-    base_dataset = dataset.take(num_splits)
-    dataset = dataset.skip(num_splits)
+    # Assign two batches to each split to ensure that each split gets at least one train/val batch
+    base_dataset = dataset.take(num_splits * BATCH_SIZE * 2)
+    dataset = dataset.skip(num_splits * BATCH_SIZE * 2)
     # Generate Dirichlet distribution proportions
     proportions = np.random.dirichlet(alpha * np.ones(num_splits))
     # Calculate number of elements per split
     num_elements = np.round(proportions * len(dataset)).astype(int)
     # Shuffle the dataset
-    dataset = dataset.shuffle(buffer_size=1000)
+    dataset = dataset.shuffle(SHUFFLE_BUFFER_SIZE)
     # Distribute the dataset into num_splits
     dataset_splits = []
     for num in num_elements:
-        split_base = base_dataset.take(1)
-        base_dataset = base_dataset.skip(1)
+        split_base = base_dataset.take(BATCH_SIZE * 2)
+        base_dataset = base_dataset.skip(BATCH_SIZE * 2)
         dataset_splits.append(split_base.concatenate(dataset.take(num)))
         dataset = dataset.skip(num)
 

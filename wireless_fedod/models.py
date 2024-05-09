@@ -1,9 +1,10 @@
 import keras
 import keras_cv
-from dataset import OBJECT_CLASSES
 
 
 def yolov8_model_fn() -> keras.Model:
+    from config import OBJECT_CLASSES
+
     model = keras_cv.models.YOLOV8Detector(
         num_classes=len(OBJECT_CLASSES),
         bounding_box_format="xyxy",

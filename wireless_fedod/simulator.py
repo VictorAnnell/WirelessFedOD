@@ -4,8 +4,16 @@ import keras
 import numpy as np
 import tensorflow as tf
 from car import Car
-from dataset import class_mapping, noniid_split_dataset, preprocess_fn
-from selection_policies import random_agent_selection
+from config import (
+    AGENT_SELECTION_FN,
+    CLASS_MAPPING,
+    LOCAL_EPOCHS,
+    MODEL_FN,
+    NUM_CLIENTS,
+    SIMULATION_ID,
+    STEPS_PER_LOCAL_EPOCH,
+)
+from dataset import noniid_split_dataset, preprocess_fn
 from utils import (
     fedavg_aggregate,
     visualize_dataset,
@@ -14,35 +22,29 @@ from utils import (
 
 
 class WirelessFedODSimulator:
-    def __init__(self, num_clients=5):
+    def __init__(self, num_clients=NUM_CLIENTS, simulation_id=SIMULATION_ID):
+        self.simulation_id = (
+            simulation_id + "_" + datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+            if simulation_id
+            else datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        )
         self.train_data = None
         self.test_data = None
-        self.model_fn = None
+        self.model_fn = MODEL_FN
         self.metrics = {}
-        self.agent_selection_fn = random_agent_selection
+        self.agent_selection_fn = AGENT_SELECTION_FN
         self.preprocess_fn = preprocess_fn
-        self.local_epochs = 1
-        self.steps_per_local_epoch = None
-        self.batch_size = 20
-        self.shuffle_buffer = 100
-        self.prefetch_buffer = 10
+        self.local_epochs = LOCAL_EPOCHS
+        self.steps_per_local_epoch = STEPS_PER_LOCAL_EPOCH
         self.round_num = 0
         self.cars = []
         self.global_weights = None
         self.num_clients = num_clients
-        self.time_started = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        self.callbacks = [
-            keras.callbacks.TensorBoard(
-                log_dir=f"logs/{self.time_started}/global",
-                histogram_freq=1,
-                write_graph=True,
-                write_images=True,
-                write_steps_per_second=True,
-            ),
-        ]
-        self.file_writer = tf.summary.create_file_writer(f"logs/{self.time_started}/global/eval")
+        self.callbacks = []
 
-    # TODO: Handle the dataset in a more generic way
+    def __str__(self):
+        return f"WirelessFedODSimulator {self.simulation_id}"
+
     def initialize_cars(self):
         if self.train_data is None:
             raise ValueError("Training data is not set.")
@@ -60,7 +62,7 @@ class WirelessFedODSimulator:
                 i,
                 self.model_fn,
                 train_data_splits[i],
-                self.time_started,
+                self.simulation_id,
                 local_epochs=self.local_epochs,
                 steps_per_epoch=self.steps_per_local_epoch,
             )
@@ -68,6 +70,16 @@ class WirelessFedODSimulator:
             self.cars.append(car)
 
     def initialize(self):
+        self.callbacks.append(
+            keras.callbacks.TensorBoard(
+                log_dir=f"logs/{self.simulation_id}/global",
+                histogram_freq=1,
+                write_graph=True,
+                write_images=True,
+                write_steps_per_second=True,
+            ),
+        )
+        self._file_writer = tf.summary.create_file_writer(f"logs/{self.simulation_id}/global/eval")
         self.round_num = 0
         self.global_weights = self.model_fn().get_weights()
         self.initialize_cars()
@@ -149,7 +161,7 @@ class WirelessFedODSimulator:
         print("Visualizing detection")
         model = self.model_fn()
         model.set_weights(self.global_weights)
-        visualize_detection(model, self.test_data, self.preprocess_fn, class_mapping=class_mapping)
+        visualize_detection(model, self.test_data, self.preprocess_fn, class_mapping=CLASS_MAPPING)
 
     def visualize_dataset(self, type="test"):
         if self.preprocess_fn is None:
@@ -167,12 +179,12 @@ class WirelessFedODSimulator:
             raise ValueError("Invalid dataset type. Should be 'train' or 'test'")
 
         print(f"Visualizing {type} dataset")
-        visualize_dataset(dataset, self.preprocess_fn, class_mapping=class_mapping)
+        visualize_dataset(dataset, self.preprocess_fn, class_mapping=CLASS_MAPPING)
 
     def print_metrics(self, model, result):
         print()
         print("Round Metrics:")
-        with self.file_writer.as_default(step=self.round_num):
+        with self._file_writer.as_default(step=self.round_num):
             if isinstance(result, list):
                 for name, value in zip(model.metrics_names, result):
                     print(f"{name}: {value:.4f}", end=", ")
