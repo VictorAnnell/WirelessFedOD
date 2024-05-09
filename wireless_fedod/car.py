@@ -4,6 +4,7 @@ from typing import Callable
 import keras
 import numpy as np
 import tensorflow as tf
+from config import BATCH_SIZE
 
 
 class Car:
@@ -56,11 +57,12 @@ class Car:
         if self.train_data is None:
             raise ValueError("Training data is not set.")
         if self.test_data is None:
-            # Split train data into train and test
-            len_train = len(self.train_data)
-            len_test = int(len_train * self.test_split)
-            self.test_data = self.train_data.take(len_test)
-            self.train_data = self.train_data.skip(len_test)
+            # Split train data into train/test with ratio 'test_split', giving test at least BATCH_SIZE elements
+            train_size = tf.data.experimental.cardinality(self.train_data).numpy()
+            test_size = int(train_size * self.test_split)
+            test_size = max(test_size, BATCH_SIZE)
+            self.test_data = self.train_data.take(test_size)
+            self.train_data = self.train_data.skip(test_size)
 
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
