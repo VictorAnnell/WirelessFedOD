@@ -100,12 +100,9 @@ class WirelessFedODSimulator:
         # Update global weights with the scaled average of the local weights
         total_samples = sum(len(car.train_data) for car in self.cars_this_round)
         weighted_weights = [
-            [layer * len(car.train_data) / total_samples for layer in car.local_weights]
-            for car in self.cars_this_round
+            [layer * len(car.train_data) / total_samples for layer in car.local_weights] for car in self.cars_this_round
         ]
-        self.global_weights = [
-            np.average(weights, axis=0) for weights in zip(*weighted_weights)
-        ]
+        self.global_weights = [np.average(weights, axis=0) for weights in zip(*weighted_weights)]
 
         # reference implementation
         self.global_weights = fedavg_aggregate(self.cars, self.cars_this_round)

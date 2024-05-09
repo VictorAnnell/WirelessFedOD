@@ -1,15 +1,20 @@
 import random
-
-import numpy as np
-import keras_cv
-import keras
-import tensorflow as tf
 from typing import Callable
+
+import keras
+import numpy as np
+import tensorflow as tf
 
 
 class Car:
     def __init__(
-        self, id, model_fn: Callable[[], keras.Model], train_data: tf.data.Dataset, simulation_id: str, local_epochs: int = 1, steps_per_epoch = None
+        self,
+        id,
+        model_fn: Callable[[], keras.Model],
+        train_data: tf.data.Dataset,
+        simulation_id: str,
+        local_epochs: int = 1,
+        steps_per_epoch=None,
     ):
         self.id = id
         self.local_epochs = local_epochs
@@ -70,7 +75,6 @@ class Car:
             print("Preprocessing test data for", self)
             self.preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
 
-
         print(f"Training {self}")
 
         # coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
@@ -95,8 +99,9 @@ class Car:
         flt_global_weights = np.concatenate(np.asanyarray(self.global_weights, dtype=object), axis=None)
         flt_local_weights = np.concatenate(np.asanyarray(self.local_weights, dtype=object), axis=None)
         self.deviation = np.linalg.norm(flt_global_weights - flt_local_weights)
-        print(f"{self} deviation: {self.deviation}, local weights sum: {np.sum(flt_local_weights)}, global weights sum: {np.sum(flt_global_weights)}")
-
+        print(
+            f"{self} deviation: {self.deviation}, local weights sum: {np.sum(flt_local_weights)}, global weights sum: {np.sum(flt_global_weights)}"
+        )
 
         # Clear preproccessed data to save memory
         self.preprocessed_test_data = None

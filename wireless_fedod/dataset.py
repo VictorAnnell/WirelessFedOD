@@ -31,7 +31,11 @@ def preprocess_fn(dataset, validation_dataset=False):
         augmenters = keras_cv.layers.Augmenter(
             [
                 keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
-                keras_cv.layers.JitteredResize(target_size=(640, 640), scale_factor=(0.75, 1.3), bounding_box_format="xyxy",),
+                keras_cv.layers.JitteredResize(
+                    target_size=(640, 640),
+                    scale_factor=(0.75, 1.3),
+                    bounding_box_format="xyxy",
+                ),
             ],
         )
     dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
@@ -64,20 +68,15 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
             bbox.append(frame_bboxs)
             # Convert classes to class_ids
             frame_class_ids = [
-                list(class_mapping.keys())[list(class_mapping.values()).index(cls)]
-                for cls in frame_classes
+                list(class_mapping.keys())[list(class_mapping.values()).index(cls)] for cls in frame_classes
             ]
             class_ids.append(frame_class_ids)
     bbox_tensor = tf.ragged.constant(bbox)
     # TODO: fix
-    converted_bbox_tensor = keras_cv.bounding_box.convert_format(
-        bbox_tensor, bounding_box_format, "xyxy"
-    )
+    converted_bbox_tensor = keras_cv.bounding_box.convert_format(bbox_tensor, bounding_box_format, "xyxy")
     classes_tensor = tf.ragged.constant(class_ids)
     image_paths_tensor = tf.ragged.constant(image_paths)
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (image_paths_tensor, classes_tensor, converted_bbox_tensor)
-    )
+    dataset = tf.data.Dataset.from_tensor_slices((image_paths_tensor, classes_tensor, converted_bbox_tensor))
     return dataset
 
 
@@ -85,9 +84,7 @@ def get_random_sized_subset(input_list, client_id, num_clients, seed):
     random.seed(seed)
     # Generate random subset sizes
     total_elements = len(input_list)
-    subset_sizes = [
-        random.randint(1, total_elements // num_clients + 1) for _ in range(num_clients)
-    ]
+    subset_sizes = [random.randint(1, total_elements // num_clients + 1) for _ in range(num_clients)]
     # Adjust the last subset size if the sum exceeds the list length
     while sum(subset_sizes) > total_elements:
         subset_sizes[-1] -= 1
@@ -124,17 +121,14 @@ def load_zod(version="mini", seed=0, bounding_box_format="xyxy", upper_bound=Non
         validation_frames = {x for x in validation_frames if int(x) <= upper_bound}
 
     print("Creating training dataset")
-    training_dataset = create_dataset(
-        zod_frames, training_frames, bounding_box_format=bounding_box_format
-    )
+    training_dataset = create_dataset(zod_frames, training_frames, bounding_box_format=bounding_box_format)
     print("Creating validation dataset")
-    validation_dataset = create_dataset(
-        zod_frames, validation_frames, bounding_box_format=bounding_box_format
-    )
+    validation_dataset = create_dataset(zod_frames, validation_frames, bounding_box_format=bounding_box_format)
 
     return training_dataset, validation_dataset
 
-def noniid_split_dataset(dataset: 'tf.data.Dataset', num_splits: int, alpha: int = 1) -> list('tf.data.Dataset'):
+
+def noniid_split_dataset(dataset: "tf.data.Dataset", num_splits: int, alpha: int = 1) -> list("tf.data.Dataset"):
     """
     Split a dataset into num_splits non-iid datasets.
     """
@@ -161,9 +155,7 @@ def noniid_split_dataset(dataset: 'tf.data.Dataset', num_splits: int, alpha: int
     return dataset_splits
 
 
-def load_zod_federated(
-    num_clients=5, version="mini", seed=0, bounding_box_format="xyxy", upper_bound=None
-):
+def load_zod_federated(num_clients=5, version="mini", seed=0, bounding_box_format="xyxy", upper_bound=None):
     # NOTE! Set the path to dataset and choose a version
     dataset_root = "../datasets"
     version = version  # "mini" or "full"
@@ -187,18 +179,12 @@ def load_zod_federated(
     training_dataset_list = []
 
     for client_id in tqdm(client_ids, desc="Creating datasets"):
-        client_frame_ids = get_random_sized_subset(
-            list(training_frames), client_id, num_clients, seed
-        )
+        client_frame_ids = get_random_sized_subset(list(training_frames), client_id, num_clients, seed)
         training_dataset_list.append(
-            create_dataset(
-                zod_frames, client_frame_ids, bounding_box_format=bounding_box_format
-            )
+            create_dataset(zod_frames, client_frame_ids, bounding_box_format=bounding_box_format)
         )
 
     # training_dataset = create_dataset(zod_frames, training_frames)
-    validation_dataset = create_dataset(
-        zod_frames, validation_frames, bounding_box_format=bounding_box_format
-    )
+    validation_dataset = create_dataset(zod_frames, validation_frames, bounding_box_format=bounding_box_format)
 
     return training_dataset_list, validation_dataset

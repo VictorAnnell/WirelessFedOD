@@ -140,6 +140,7 @@ rfc3986-validator==0.1.1
 rich==13.7.1
 rpds-py==0.18.0
 rsa==4.9
+ruff==0.4.3
 scipy==1.12.0
 Send2Trash==1.8.2
 six==1.16.0

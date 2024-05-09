@@ -69,18 +69,19 @@ def visualize_detection(model, dataset, preprocess_fn, class_mapping=None, bound
 
 
 def weight_scalling_factor(cars, car):
-    from dataset import BATCH_SIZE # TODO: remove this when batch size is configurable
-    #get the bs
+    # get the bs
+    from dataset import BATCH_SIZE  # TODO: remove this when batch size is configurable
+
     bs = BATCH_SIZE
-    #first calculate the total training data points across clinets
-    global_count = sum([tf.data.experimental.cardinality(carx.train_data).numpy() for carx in cars])*bs
+    # first calculate the total training data points across clinets
+    global_count = sum([tf.data.experimental.cardinality(carx.train_data).numpy() for carx in cars]) * bs
     # get the total number of data points held by a client
-    local_count = tf.data.experimental.cardinality(car.train_data).numpy()*bs
-    return local_count/global_count
+    local_count = tf.data.experimental.cardinality(car.train_data).numpy() * bs
+    return local_count / global_count
 
 
 def scale_model_weights(weight, scalar):
-    '''function for scaling a models weights'''
+    """function for scaling a models weights"""
     weight_final = []
     steps = len(weight)
     for i in range(steps):
@@ -89,13 +90,13 @@ def scale_model_weights(weight, scalar):
 
 
 def sum_scaled_weights(scaled_weight_list):
-    '''Return the sum of the listed scaled weights. The is equivalent to scaled avg of the weights'''
+    """Return the sum of the listed scaled weights. The is equivalent to scaled avg of the weights"""
     avg_grad = list()
-    #get the average grad accross all client gradients
+    # get the average grad accross all client gradients
     for grad_list_tuple in zip(*scaled_weight_list):
         layer_mean = tf.math.reduce_sum(grad_list_tuple, axis=0)
         avg_grad.append(layer_mean)
-        
+
     return avg_grad
 
 
@@ -107,4 +108,3 @@ def fedavg_aggregate(cars, cars_this_round):
         scaled_local_weight_list.append(scaled_weights)
     average_weights = sum_scaled_weights(scaled_local_weight_list)
     return average_weights
-
