@@ -10,6 +10,9 @@ load_dotenv()
 # Dataset configuration
 DATASET_ROOT = os.getenv("DATASET_ROOT", "../datasets")
 DATASET_VERSION = os.getenv("DATASET_VERSION", "mini")
+DATASET_MAX_IMAGES = os.getenv("DATASET_MAX_IMAGES", 200) if DATASET_VERSION == "full" else None
+if DATASET_MAX_IMAGES is not None:
+    DATASET_MAX_IMAGES = int(DATASET_MAX_IMAGES)
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1))
 SHUFFLE_BUFFER_SIZE = int(os.getenv("SHUFFLE_BUFFER_SIZE", BATCH_SIZE * 10))
 OBJECT_CLASSES = OBJECT_CLASSES

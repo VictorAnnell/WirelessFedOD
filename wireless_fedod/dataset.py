@@ -4,7 +4,7 @@ import keras_cv
 import numpy as np
 import tensorflow as tf
 import zod.constants as constants
-from config import BATCH_SIZE, CLASS_MAPPING, DATASET_ROOT, DATASET_VERSION, SHUFFLE_BUFFER_SIZE
+from config import BATCH_SIZE, CLASS_MAPPING, DATASET_MAX_IMAGES, DATASET_ROOT, DATASET_VERSION, SHUFFLE_BUFFER_SIZE
 from tqdm.auto import tqdm
 from utils import dict_to_tuple_fn, format_element_fn
 from zod import ZodFrames
@@ -96,7 +96,7 @@ def get_random_sized_subset(input_list, client_id, num_clients, seed):
     return subsets[client_id]
 
 
-def load_zod(version=DATASET_VERSION, seed=0, bounding_box_format="xyxy", upper_bound=None):
+def load_zod(version=DATASET_VERSION, seed=0, bounding_box_format="xyxy", max_images=DATASET_MAX_IMAGES):
     dataset_root = DATASET_ROOT
     version = version  # "mini" or "full"
 
@@ -111,9 +111,9 @@ def load_zod(version=DATASET_VERSION, seed=0, bounding_box_format="xyxy", upper_
     if not training_frames or not validation_frames:
         raise ValueError("Arguments resulted in empty training or validation set.")
 
-    if upper_bound:
-        training_frames = {x for x in training_frames if int(x) <= upper_bound}
-        validation_frames = {x for x in validation_frames if int(x) <= upper_bound}
+    if max_images:
+        training_frames = {x for x in training_frames if int(x) <= max_images}
+        validation_frames = {x for x in validation_frames if int(x) <= max_images}
 
     print("Creating training dataset")
     training_dataset = create_dataset(zod_frames, training_frames, bounding_box_format=bounding_box_format)

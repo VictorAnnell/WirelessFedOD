@@ -12,10 +12,9 @@ def test_policies():
     zod_train, zod_test = load_zod(
         # version="mini",
         version="full",
-        upper_bound=500,
     )
     for policy in [random_agent_selection, loss_based_selection, deviation_based_selection]:
-        simulator = WirelessFedODSimulator(num_clients=50, simulation_id=policy.__name__)
+        simulator = WirelessFedODSimulator(num_clients=10, simulation_id=policy.__name__)
         simulator.train_data = zod_train
         simulator.test_data = zod_test
         simulator.model_fn = yolov8_model_fn
@@ -31,7 +30,6 @@ if __name__ == "__main__":
     zod_train, zod_test = load_zod(
         # version="mini",
         version="full",
-        upper_bound=500,
     )
 
     # Set dataset, model_fn, and agent_selection_fn
