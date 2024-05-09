@@ -1,118 +1,16 @@
-import collections
 import datetime
 
 import keras
-import keras_cv
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from car import Car
-from dataset import class_mapping, noniid_split_dataset
-
-BATCH_SIZE = 1
-
-def visualize_dataset(dataset, preprocess_fn, bounding_box_format="xyxy"):
-    dataset = dataset.shuffle(100)
-    single_image_dataset = dataset.take(1)
-    images, y_true = next(iter(preprocess_fn(single_image_dataset, validation_dataset=True)))
-    keras_cv.visualization.plot_bounding_box_gallery(
-        images,
-        value_range=(0, 255),
-        bounding_box_format=bounding_box_format,
-        y_true=y_true,
-        scale=2,
-        rows=1,
-        cols=1,
-        show=True,
-        font_scale=0.7,
-        class_mapping=class_mapping,
-        legend=True,
-    )
-    plt.show()
-
-def visualize_detection(model, dataset, preprocess_fn, bounding_box_format="xyxy"):
-    dataset = dataset.shuffle(100)
-    single_image_dataset = dataset.take(1)
-    images, y_true = next(iter(preprocess_fn(single_image_dataset)))
-    y_pred = model.predict(images)
-    keras_cv.visualization.plot_bounding_box_gallery(
-        images,
-        value_range=(0, 255),
-        bounding_box_format=bounding_box_format,
-        y_true=y_true,
-        y_pred=y_pred,
-        scale=4,
-        rows=1,
-        cols=1,
-        show=True,
-        font_scale=0.7,
-        class_mapping=class_mapping,
-        legend=True,
-    )
-    plt.show()
-
-def weight_scalling_factor(cars, car):
-    #get the bs
-    bs = BATCH_SIZE
-    #first calculate the total training data points across clinets
-    global_count = sum([tf.data.experimental.cardinality(carx.train_data).numpy() for carx in cars])*bs
-    # get the total number of data points held by a client
-    local_count = tf.data.experimental.cardinality(car.train_data).numpy()*bs
-    return local_count/global_count
-
-
-def scale_model_weights(weight, scalar):
-    '''function for scaling a models weights'''
-    weight_final = []
-    steps = len(weight)
-    for i in range(steps):
-        weight_final.append(scalar * weight[i])
-    return weight_final
-
-
-
-def sum_scaled_weights(scaled_weight_list):
-    '''Return the sum of the listed scaled weights. The is equivalent to scaled avg of the weights'''
-    avg_grad = list()
-    #get the average grad accross all client gradients
-    for grad_list_tuple in zip(*scaled_weight_list):
-        layer_mean = tf.math.reduce_sum(grad_list_tuple, axis=0)
-        avg_grad.append(layer_mean)
-        
-    return avg_grad
-
-def fedavg_aggregate(cars, cars_this_round):
-    scaled_local_weight_list = list()
-    for car in cars_this_round:
-        scaling_factor = weight_scalling_factor(cars, car)
-        scaled_weights = scale_model_weights(car.local_weights, scaling_factor)
-        scaled_local_weight_list.append(scaled_weights)
-    average_weights = sum_scaled_weights(scaled_local_weight_list)
-    return average_weights
-
-def default_preprocess(self, dataset):
-    def batch_format_fn(element):
-        """Flatten a batch `pixels` and return the features as an `OrderedDict`."""
-        return collections.OrderedDict(
-            x=tf.reshape(element["pixels"], [-1, 784]),
-            y=tf.reshape(element["label"], [-1, 1]),
-        )
-
-    return (
-        dataset.repeat(self.local_epochs)
-        .shuffle(self.shuffle_buffer, seed=1)
-        .batch(self.batch_size)
-        .map(batch_format_fn)
-        .prefetch(self.prefetch_buffer)
-    )
-
-
-def default_agent_selection(self, cars):
-    """Select half of the clients randomly."""
-    clients = np.random.choice(cars, len(cars) // 2, replace=False)
-    if len(clients) == 0:
-        clients = cars
-    return clients
+from dataset import class_mapping, noniid_split_dataset, preprocess_fn
+from selection_policies import random_agent_selection
+from utils import (
+    fedavg_aggregate,
+    visualize_dataset,
+    visualize_detection,
+)
 
 
 class WirelessFedODSimulator:
@@ -121,8 +19,8 @@ class WirelessFedODSimulator:
         self.test_data = None
         self.model_fn = None
         self.metrics = {}
-        self.agent_selection_fn = default_agent_selection
-        self.preprocess_fn = default_preprocess
+        self.agent_selection_fn = random_agent_selection
+        self.preprocess_fn = preprocess_fn
         self.local_epochs = 1
         self.steps_per_local_epoch = None
         self.batch_size = 20
@@ -254,7 +152,7 @@ class WirelessFedODSimulator:
         print("Visualizing detection")
         model = self.model_fn()
         model.set_weights(self.global_weights)
-        visualize_detection(model, self.test_data, self.preprocess_fn)
+        visualize_detection(model, self.test_data, self.preprocess_fn, class_mapping=class_mapping)
 
     def visualize_dataset(self, type="test"):
         if self.preprocess_fn is None:
@@ -272,7 +170,7 @@ class WirelessFedODSimulator:
             raise ValueError("Invalid dataset type. Should be 'train' or 'test'")
 
         print(f"Visualizing {type} dataset")
-        visualize_dataset(dataset, self.preprocess_fn)
+        visualize_dataset(dataset, self.preprocess_fn, class_mapping=class_mapping)
 
     def print_metrics(self, model, result):
         print()

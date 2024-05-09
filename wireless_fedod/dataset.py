@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 import zod.constants as constants
 from tqdm.auto import tqdm
+from utils import dict_to_tuple_fn, format_element_fn
 from zod import ZodFrames
 from zod.anno.object import OBJECT_CLASSES
 from zod.constants import AnnotationProject, Anonymization
@@ -13,13 +14,39 @@ random.seed(0)
 
 class_mapping = dict(zip(range(len(OBJECT_CLASSES)), OBJECT_CLASSES))
 
+BATCH_SIZE = 1  # TODO: make this configurable
+
+
+# Data pipeline preprocessing function
+def preprocess_fn(dataset, validation_dataset=False):
+    dataset = dataset.map(format_element_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    if validation_dataset:
+        augmenters = keras_cv.layers.Augmenter(
+            [
+                keras_cv.layers.Resizing(640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy"),
+            ],
+        )
+    else:
+        dataset = dataset.shuffle(BATCH_SIZE * 10, seed=1)
+        augmenters = keras_cv.layers.Augmenter(
+            [
+                keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
+                keras_cv.layers.JitteredResize(target_size=(640, 640), scale_factor=(0.75, 1.3), bounding_box_format="xyxy",),
+            ],
+        )
+    dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
+    dataset = dataset.map(augmenters, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.map(dict_to_tuple_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    return dataset
+
 
 def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
     # Load training_frames inta a tensorfow dataset
     image_paths = []
     bbox = []
     class_ids = []
-    for frame_id in frame_ids:
+    for frame_id in tqdm(frame_ids, desc="Processing frames", unit="frame", dynamic_ncols=True):
         frame_bboxs = []
         frame_classes = []
         frame_has_2d_bbox = False
@@ -96,9 +123,11 @@ def load_zod(version="mini", seed=0, bounding_box_format="xyxy", upper_bound=Non
         training_frames = {x for x in training_frames if int(x) <= upper_bound}
         validation_frames = {x for x in validation_frames if int(x) <= upper_bound}
 
+    print("Creating training dataset")
     training_dataset = create_dataset(
         zod_frames, training_frames, bounding_box_format=bounding_box_format
     )
+    print("Creating validation dataset")
     validation_dataset = create_dataset(
         zod_frames, validation_frames, bounding_box_format=bounding_box_format
     )
