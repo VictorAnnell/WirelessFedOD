@@ -8,13 +8,13 @@ import numpy as np
 import tensorflow as tf
 from car import Car
 from dataset import class_mapping, noniid_split_dataset
-from tqdm.auto import tqdm
 
 BATCH_SIZE = 1
 
-def visualize_dataset(dataset, bounding_box_format="xyxy"):
+def visualize_dataset(dataset, preprocess_fn, bounding_box_format="xyxy"):
     dataset = dataset.shuffle(100)
-    images, y_true = next(iter(dataset.take(1)))
+    single_image_dataset = dataset.take(1)
+    images, y_true = next(iter(preprocess_fn(single_image_dataset, validation_dataset=True)))
     keras_cv.visualization.plot_bounding_box_gallery(
         images,
         value_range=(0, 255),
@@ -30,9 +30,10 @@ def visualize_dataset(dataset, bounding_box_format="xyxy"):
     )
     plt.show()
 
-def visualize_detection(model, dataset, bounding_box_format="xyxy"):
+def visualize_detection(model, dataset, preprocess_fn, bounding_box_format="xyxy"):
     dataset = dataset.shuffle(100)
-    images, y_true = next(iter(dataset.take(1)))
+    single_image_dataset = dataset.take(1)
+    images, y_true = next(iter(preprocess_fn(single_image_dataset)))
     y_pred = model.predict(images)
     keras_cv.visualization.plot_bounding_box_gallery(
         images,
@@ -117,7 +118,7 @@ def default_agent_selection(self, cars):
 class WirelessFedODSimulator:
     def __init__(self, num_clients=5):
         self.train_data = None
-        self.test_data = None  # Note: pre-preprocess the test data
+        self.test_data = None
         self.model_fn = None
         self.metrics = {}
         self.agent_selection_fn = default_agent_selection
@@ -193,7 +194,7 @@ class WirelessFedODSimulator:
         print("Selected clients:", end=" ")
         print(", ".join(str(car) for car in self.cars_this_round))
 
-        for car in tqdm(self.cars_this_round, desc="Training cars"):
+        for car in self.cars_this_round:
             keras.backend.clear_session()
             car.global_weights = self.global_weights
             car.train()
@@ -231,7 +232,7 @@ class WirelessFedODSimulator:
         print("Evaluating global model")
         model = self.model_fn()
         model.set_weights(self.global_weights)
-        result = model.evaluate(self.test_data, callbacks=self.callbacks)
+        result = model.evaluate(self.preprocess_fn(self.test_data, validation_dataset=True), callbacks=self.callbacks)
         # Store metrics
         if isinstance(result, list):
             self.metrics = dict(zip(model.metrics_names, result))
@@ -244,8 +245,8 @@ class WirelessFedODSimulator:
             raise ValueError("Model function is not set.")
         if self.test_data is None:
             raise ValueError("Test data is not set.")
-        # if self.preprocess_fn is None:
-        #     raise ValueError("Preprocess function is not set.")
+        if self.preprocess_fn is None:
+            raise ValueError("Preprocess function is not set.")
         if self.global_weights is None:
             print("Global weights are not set, using initial weights")
             self.initialize()
@@ -253,9 +254,12 @@ class WirelessFedODSimulator:
         print("Visualizing detection")
         model = self.model_fn()
         model.set_weights(self.global_weights)
-        visualize_detection(model, self.test_data)
+        visualize_detection(model, self.test_data, self.preprocess_fn)
 
     def visualize_dataset(self, type="test"):
+        if self.preprocess_fn is None:
+            raise ValueError("Preprocess function is not set.")
+
         if type == "test":
             if self.test_data is None:
                 raise ValueError("Test data is not set.")
@@ -263,13 +267,12 @@ class WirelessFedODSimulator:
         elif type == "train":
             if self.train_data is None:
                 raise ValueError("Train data is not set.")
-            dataset = self.preprocess_fn(self.train_data)
+            dataset = self.train_data
         else:
             raise ValueError("Invalid dataset type. Should be 'train' or 'test'")
 
         print(f"Visualizing {type} dataset")
-        visualize_dataset(dataset)
-
+        visualize_dataset(dataset, self.preprocess_fn)
 
     def print_metrics(self, model, result):
         print()

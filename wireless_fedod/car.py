@@ -68,7 +68,7 @@ class Car:
             self.preprocessed_train_data = self.preprocess_fn(self.train_data)
         if self.preprocessed_test_data is None:
             print("Preprocessing test data for", self)
-            self.preprocessed_test_data = self.preprocess_fn(self.test_data)
+            self.preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
 
 
         print(f"Training {self}")

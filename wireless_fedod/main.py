@@ -26,9 +26,7 @@ def format_element_fn(image_path, classes, bboxes):
     }
 
 def dict_to_tuple_fn(inputs):
-    return inputs["images"], keras_cv.bounding_box.to_dense(
-        inputs["bounding_boxes"], max_boxes=32
-    )
+    return inputs["images"], inputs["bounding_boxes"]
 
 # Set preprocess_fn
 def preprocess_fn(dataset, validation_dataset=False):
@@ -87,7 +85,7 @@ if __name__ == "__main__":
 
     # Set dataset, model_fn, and agent_selection_fn
     simulator.train_data = zod_train
-    simulator.test_data = preprocess_fn(zod_test, validation_dataset=True)
+    simulator.test_data = zod_test
     simulator.model_fn = model_fn
     simulator.num_clients = 1 # For testing
     simulator.local_epochs = 1 # For testing
