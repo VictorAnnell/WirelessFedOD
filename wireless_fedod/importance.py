@@ -21,6 +21,11 @@ def bit_rate_based_importance(self, car) -> float:
     return car.bit_rate
 
 
+def mAP_based_importance(self, car) -> float:
+    """Return the mAP of the client."""
+    return car.mAP
+
+
 def loss_combined_importance(self, car) -> float:
     from config import LEARNING_IMPORTANCE_WEIGHT, NETWORK_IMPORTANCE_WEIGHT
 
@@ -33,3 +38,10 @@ def deviation_combined_importance(self, car) -> float:
 
     """Return the combined importance of deviation and bit rate."""
     return (car.deviation * LEARNING_IMPORTANCE_WEIGHT) + (car.bit_rate * NETWORK_IMPORTANCE_WEIGHT)
+
+
+def mAP_combined_importance(self, car) -> float:
+    from config import LEARNING_IMPORTANCE_WEIGHT, NETWORK_IMPORTANCE_WEIGHT
+
+    """Return the combined importance of mAP and bit rate."""
+    return (car.mAP * LEARNING_IMPORTANCE_WEIGHT) + (car.bit_rate * NETWORK_IMPORTANCE_WEIGHT)

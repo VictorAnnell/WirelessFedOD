@@ -33,8 +33,9 @@ class Car:
         self.simulation_id = simulation_id
         self.test_split = 0.2
         self.round_num = 0
-        self.deviation = 0
+        self.deviation = 0.0
         self.loss = None
+        self.mAP = 0.0
         self.bit_rate = 0.0
         self.importance = 0.0
         self.results = []
@@ -99,6 +100,9 @@ class Car:
 
         # Set loss
         self.loss = result.history["loss"][-1]
+
+        # Set mAP
+        self.mAP = result.history["val_AP"][-1]
 
         # Set deviation
         flt_global_weights = np.concatenate(np.asanyarray(self.global_weights, dtype=object), axis=None)

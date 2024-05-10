@@ -103,7 +103,7 @@ class WirelessFedODSimulator:
             self.initialize()
 
         # Get cars with highest importance scores
-        self.cars_this_round = sorted(self.cars, key=lambda x: x.importance, reverse=True)[: len(self.cars) // 2]
+        self.cars_this_round = sorted(self.cars, key=lambda x: x.importance, reverse=True)[: max(len(self.cars) // 2, 1)]
         if len(self.cars_this_round) == 0:
             raise ValueError("No clients selected.")
 
