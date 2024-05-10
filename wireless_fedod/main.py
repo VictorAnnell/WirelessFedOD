@@ -3,7 +3,7 @@ from config import MIXED_PRECISION, SEED
 from dataset import load_zod
 from dotenv import load_dotenv
 from importance import deviation_based_importance, loss_based_importance, random_based_importance
-from models import yolov8_model_fn
+from models import retinanet_resnet50_imagenet_model_fn, retinanet_resnet50_model_fn, yolov8_model_fn
 from simulator import WirelessFedODSimulator
 
 load_dotenv()
@@ -28,6 +28,19 @@ def test_policies():
         simulator.importance_fn = policy
         for _ in range(3):
             simulator.run_round()
+
+
+def test_models():
+    # Load ZOD dataset
+    zod_train, zod_test = load_zod(version="mini", max_images=None)
+    for model_fn in [yolov8_model_fn, retinanet_resnet50_model_fn, retinanet_resnet50_imagenet_model_fn]:
+        simulator = WirelessFedODSimulator(num_clients=1, simulation_id=model_fn.__name__)
+        simulator.train_data = zod_train
+        simulator.test_data = zod_test
+        simulator.model_fn = model_fn
+        simulator.local_epochs = 1
+        simulator.steps_per_local_epoch = 1
+        simulator.run_round()
 
 
 if __name__ == "__main__":
