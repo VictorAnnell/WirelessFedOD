@@ -1,3 +1,4 @@
+import math
 import os
 
 from dotenv import load_dotenv
@@ -49,3 +50,14 @@ try:
     AGENT_SELECTION_FN = globals()[AGENT_SELECTION_FN]
 except KeyError:
     raise ValueError(f"Selection policy {AGENT_SELECTION_FN} not found in selection_policies.py")
+
+# Base station configuration
+ALTITUTE_VEHICLE = 1.6  # in m
+ALTITUTE_BS = 25  # in m
+SPEED_OF_LIGHT = 3 * math.pow(10, 8)  # in m/s
+FREQUENCY = 3.5 * math.pow(10, 9)  # in Hz
+PATH_LOSS_EXPONENT = 3.7
+HPBW_BS = 25
+SLL_BS = 19.1
+BEAMS_AZIMUTH = [15, 45, -15, -45]
+BEAMS_ELEVATION = [16.8]  # , 46.8, 76.8]

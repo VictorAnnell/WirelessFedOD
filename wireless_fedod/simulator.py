@@ -4,6 +4,7 @@ import keras
 import numpy as np
 import tensorflow as tf
 from car import Car
+from base_station import BaseStation
 from config import (
     AGENT_SELECTION_FN,
     CLASS_MAPPING,
@@ -41,6 +42,8 @@ class WirelessFedODSimulator:
         self.global_weights = None
         self.num_clients = num_clients
         self.callbacks = []
+        self.base_stations = []
+        self.base_station = BaseStation(0, (0, 0))
 
     def __str__(self):
         return f"WirelessFedODSimulator {self.simulation_id}"

@@ -34,6 +34,7 @@ class Car:
         self.round_num = 0
         self.deviation = None
         self.loss = None
+        self.bit_rate = None
 
         # Callbacks
         self.callbacks = []
@@ -91,7 +92,7 @@ class Car:
             callbacks=self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
-        print(result.history)
+        # print(result.history)
         self.local_weights = model.get_weights()
 
         # Set loss
@@ -101,9 +102,9 @@ class Car:
         flt_global_weights = np.concatenate(np.asanyarray(self.global_weights, dtype=object), axis=None)
         flt_local_weights = np.concatenate(np.asanyarray(self.local_weights, dtype=object), axis=None)
         self.deviation = np.linalg.norm(flt_global_weights - flt_local_weights)
-        print(
-            f"{self} deviation: {self.deviation}, local weights sum: {np.sum(flt_local_weights)}, global weights sum: {np.sum(flt_global_weights)}"
-        )
+        # print(
+        #     f"{self} deviation: {self.deviation}, local weights sum: {np.sum(flt_local_weights)}, global weights sum: {np.sum(flt_global_weights)}"
+        # )
 
         # Clear preproccessed data to save memory
         self.preprocessed_test_data = None
