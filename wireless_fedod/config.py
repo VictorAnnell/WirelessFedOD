@@ -2,16 +2,21 @@ import math
 import os
 
 from dotenv import load_dotenv
-from models import *  # noqa: F403
 from importance import *  # noqa: F403
+from models import *  # noqa: F403
 from zod.anno.object import OBJECT_CLASSES
 
 load_dotenv()
 
+truthy_values = ("true", "1", "yes", "y", "on")
+
+# General configuration
+SEED = int(os.getenv("SEED", "0"))
+
 # Dataset configuration
 DATASET_ROOT = os.getenv("DATASET_ROOT", "../datasets")
 DATASET_VERSION = os.getenv("DATASET_VERSION", "full")
-DATASET_MAX_IMAGES = os.getenv("DATASET_MAX_IMAGES", 200) if DATASET_VERSION == "full" else 'none'
+DATASET_MAX_IMAGES = os.getenv("DATASET_MAX_IMAGES", 200) if DATASET_VERSION == "full" else "none"
 try:
     DATASET_MAX_IMAGES = int(DATASET_MAX_IMAGES)
 except ValueError:
@@ -31,11 +36,12 @@ try:
     MODEL_FN = globals()[MODEL_FN]
 except KeyError:
     raise ValueError(f"Model {MODEL_FN} not found in models.py")
+MIXED_PRECISION = os.getenv("MIXED_PRECISION", "False").lower() in truthy_values
 
 # Simulator configuration
 NUM_CLIENTS = int(os.getenv("NUM_CLIENTS", 5))
 LOCAL_EPOCHS = int(os.getenv("LOCAL_EPOCHS", 1))
-STEPS_PER_LOCAL_EPOCH = os.getenv("STEPS_PER_LOCAL_EPOCH", 'none')
+STEPS_PER_LOCAL_EPOCH = os.getenv("STEPS_PER_LOCAL_EPOCH", "none")
 try:
     STEPS_PER_LOCAL_EPOCH = int(STEPS_PER_LOCAL_EPOCH)
 except ValueError:
@@ -59,9 +65,9 @@ NETWORK_IMPORTANCE_WEIGHT /= importance_weight_sum
 
 # Wireless network configuration
 BANDWIDTH = 20e6  # in Hz
-SIGNAL_POWER = 1 # in Watt
-NOISE_POWER = 1 # in Watt
-SNR = SIGNAL_POWER/NOISE_POWER
+SIGNAL_POWER = 1  # in Watt
+NOISE_POWER = 1  # in Watt
+SNR = SIGNAL_POWER / NOISE_POWER
 
 ALTITUTE_VEHICLE = 1.6  # in m
 ALTITUTE_BS = 25  # in m

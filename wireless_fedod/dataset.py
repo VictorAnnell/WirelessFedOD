@@ -10,8 +10,6 @@ from utils import dict_to_tuple_fn, format_element_fn
 from zod import ZodFrames
 from zod.constants import AnnotationProject, Anonymization
 
-random.seed(0)
-
 
 # Data pipeline preprocessing function
 def preprocess_fn(dataset, validation_dataset=False):
@@ -23,7 +21,7 @@ def preprocess_fn(dataset, validation_dataset=False):
             ],
         )
     else:
-        dataset = dataset.shuffle(SHUFFLE_BUFFER_SIZE, seed=1)
+        dataset = dataset.shuffle(SHUFFLE_BUFFER_SIZE)
         augmenters = keras_cv.layers.Augmenter(
             [
                 keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
@@ -76,8 +74,7 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
     return dataset
 
 
-def get_random_sized_subset(input_list, client_id, num_clients, seed):
-    random.seed(seed)
+def get_random_sized_subset(input_list, client_id, num_clients):
     # Generate random subset sizes
     total_elements = len(input_list)
     subset_sizes = [random.randint(1, total_elements // num_clients + 1) for _ in range(num_clients)]
@@ -96,7 +93,7 @@ def get_random_sized_subset(input_list, client_id, num_clients, seed):
     return subsets[client_id]
 
 
-def load_zod(version=DATASET_VERSION, seed=0, bounding_box_format="xyxy", max_images=DATASET_MAX_IMAGES):
+def load_zod(version=DATASET_VERSION, bounding_box_format="xyxy", max_images=DATASET_MAX_IMAGES):
     dataset_root = DATASET_ROOT
     version = version  # "mini" or "full"
 
@@ -150,7 +147,7 @@ def noniid_split_dataset(dataset: "tf.data.Dataset", num_splits: int, alpha: int
     return dataset_splits
 
 
-def load_zod_federated(num_clients=5, version="mini", seed=0, bounding_box_format="xyxy", upper_bound=None):
+def load_zod_federated(num_clients=5, version="mini", bounding_box_format="xyxy", upper_bound=None):
     # NOTE! Set the path to dataset and choose a version
     dataset_root = "../datasets"
     version = version  # "mini" or "full"
@@ -174,7 +171,7 @@ def load_zod_federated(num_clients=5, version="mini", seed=0, bounding_box_forma
     training_dataset_list = []
 
     for client_id in tqdm(client_ids, desc="Creating datasets"):
-        client_frame_ids = get_random_sized_subset(list(training_frames), client_id, num_clients, seed)
+        client_frame_ids = get_random_sized_subset(list(training_frames), client_id, num_clients)
         training_dataset_list.append(
             create_dataset(zod_frames, client_frame_ids, bounding_box_format=bounding_box_format)
         )

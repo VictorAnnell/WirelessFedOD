@@ -1,16 +1,26 @@
+import keras
+from config import MIXED_PRECISION, SEED
 from dataset import load_zod
 from dotenv import load_dotenv
-from models import yolov8_model_fn
 from importance import deviation_based_importance, loss_based_importance, random_based_importance
+from models import yolov8_model_fn
 from simulator import WirelessFedODSimulator
 
 load_dotenv()
+
+# Mixed precision
+if MIXED_PRECISION:
+    keras.mixed_precision.set_global_policy("mixed_float16")
+
+# Sets the seed for NumPy, TensorFlow, Keras, and random
+if SEED != -1:
+    keras.utils.set_random_seed(SEED)
 
 
 def test_policies():
     # Load ZOD dataset
     zod_train, zod_test = load_zod()
-    for policy in [random_agent_importance, loss_based_importance, deviation_based_importance]:
+    for policy in [random_based_importance, loss_based_importance, deviation_based_importance]:
         simulator = WirelessFedODSimulator(num_clients=10, simulation_id=policy.__name__)
         simulator.train_data = zod_train
         simulator.test_data = zod_test

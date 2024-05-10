@@ -7,8 +7,8 @@ import tensorflow as tf
 from base_station import BaseStation
 from car import Car
 from config import (
-    IMPORTANCE_FN,
     CLASS_MAPPING,
+    IMPORTANCE_FN,
     LOCAL_EPOCHS,
     MODEL_FN,
     NUM_CLIENTS,
@@ -111,7 +111,10 @@ class WirelessFedODSimulator:
         print(", ".join(str(car) for car in self.cars_this_round))
 
         for car in self.cars_this_round:
-            keras.backend.clear_session()
+            try:
+                keras.backend.clear_session(free_memory=True)
+            except AttributeError:
+                keras.backend.clear_session()
             car.global_weights = self.global_weights
             car.train()
 

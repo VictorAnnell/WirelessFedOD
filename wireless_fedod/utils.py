@@ -14,7 +14,7 @@ def format_element_fn(image_path, classes, bboxes):
     image = load_image(image_path)
     bounding_boxes = {
         "classes": tf.cast(classes, dtype=tf.float32),
-        "boxes": bboxes,
+        "boxes": tf.cast(bboxes, dtype=tf.float32),
     }
     return {
         "images": tf.cast(image, tf.float32),
@@ -23,7 +23,7 @@ def format_element_fn(image_path, classes, bboxes):
 
 
 def dict_to_tuple_fn(inputs):
-    return inputs["images"], keras_cv.bounding_box.to_dense(inputs["bounding_boxes"], max_boxes=1000) # TODO
+    return inputs["images"], keras_cv.bounding_box.to_dense(inputs["bounding_boxes"], max_boxes=1000)  # TODO
 
 
 def visualize_dataset(dataset, preprocess_fn, class_mapping=None, bounding_box_format="xyxy"):
