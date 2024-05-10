@@ -15,7 +15,7 @@ def test_policies():
         simulator.train_data = zod_train
         simulator.test_data = zod_test
         simulator.model_fn = yolov8_model_fn
-        simulator.agent_importance_fn = policy
+        simulator.importance_fn = policy
         for _ in range(3):
             simulator.run_round()
 

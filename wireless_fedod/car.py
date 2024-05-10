@@ -33,9 +33,9 @@ class Car:
         self.simulation_id = simulation_id
         self.test_split = 0.2
         self.round_num = 0
-        self.deviation = None
+        self.deviation = 0
         self.loss = None
-        self.bit_rate = None
+        self.bit_rate = 0.0
         self.importance = 0.0
 
         # Callbacks

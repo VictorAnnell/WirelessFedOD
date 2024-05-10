@@ -44,14 +44,19 @@ except ValueError:
     else:
         raise ValueError(f"Invalid value for STEPS_PER_LOCAL_EPOCH: {STEPS_PER_LOCAL_EPOCH}")
 SIMULATION_ID = os.getenv("SIMULATION_ID", None)
-# Set agent importance function:
-AGENT_IMPORTANCE_FN = os.getenv("AGENT_IMPORTANCE_FN", "random_based_importance")
+# Set importance function:
+IMPORTANCE_FN = os.getenv("IMPORTANCE_FN", "random_based_importance")
 try:
-    AGENT_IMPORTANCE_FN = globals()[AGENT_IMPORTANCE_FN]
+    IMPORTANCE_FN = globals()[IMPORTANCE_FN]
 except KeyError:
-    raise ValueError(f"Importance function {AGENT_IMPORTANCE_FN} not found in importance.py")
+    raise ValueError(f"Importance function {IMPORTANCE_FN} not found in importance.py")
+LEARNING_IMPORTANCE_WEIGHT = float(os.getenv("LEARNING_IMPORTANCE_WEIGHT", 0.5))
+NETWORK_IMPORTANCE_WEIGHT = float(os.getenv("NETWORK_IMPORTANCE_WEIGHT", 0.5))
+# Scale weights to sum to 1
+importance_weight_sum = LEARNING_IMPORTANCE_WEIGHT + NETWORK_IMPORTANCE_WEIGHT
+LEARNING_IMPORTANCE_WEIGHT /= importance_weight_sum
+NETWORK_IMPORTANCE_WEIGHT /= importance_weight_sum
 
-# Base station configuration
 ALTITUTE_VEHICLE = 1.6  # in m
 ALTITUTE_BS = 25  # in m
 SPEED_OF_LIGHT = 3 * math.pow(10, 8)  # in m/s
