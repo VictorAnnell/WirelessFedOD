@@ -10,6 +10,9 @@ from config import (
     PATH_LOSS_EXPONENT,
     SLL_BS,
     SPEED_OF_LIGHT,
+    SIGNAL_POWER,
+    NOISE_POWER,
+    BANDWIDTH,
 )
 
 # , CELL_SCENARIO
@@ -23,6 +26,19 @@ class BaseStation:
         self.y = coord[1]
         self.cars_in_cells = [[], [], []]  # three lists - one for each cell
         # self.broadcast_data_size = [0, 0, 0]
+
+    def get_car_bit_rate(self, car):
+        x_vehicle, y_vehicle = car.location
+        # Calculate the path loss
+        path_loss = self.get_path_loss(x_vehicle, y_vehicle)
+
+        # Calculate received signal power
+        received_power = SIGNAL_POWER / path_loss
+        # Calculate signal-to-noise ratio (SNR)
+        snr = received_power / NOISE_POWER
+        # Calculate channel capacity (bit rate) using Shannon-Hartley theorem
+        capacity = BANDWIDTH * math.log2(1 + snr)
+        return capacity
 
     def get_path_loss(self, x_vehicle, y_vehicle):
         d_2d = math.sqrt((math.pow(x_vehicle - self.x, 2)) + (math.pow(y_vehicle - self.y, 2)))

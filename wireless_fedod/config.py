@@ -57,6 +57,12 @@ importance_weight_sum = LEARNING_IMPORTANCE_WEIGHT + NETWORK_IMPORTANCE_WEIGHT
 LEARNING_IMPORTANCE_WEIGHT /= importance_weight_sum
 NETWORK_IMPORTANCE_WEIGHT /= importance_weight_sum
 
+# Wireless network configuration
+BANDWIDTH = 20e6  # in Hz
+SIGNAL_POWER = 1 # in Watt
+NOISE_POWER = 1 # in Watt
+SNR = SIGNAL_POWER/NOISE_POWER
+
 ALTITUTE_VEHICLE = 1.6  # in m
 ALTITUTE_BS = 25  # in m
 SPEED_OF_LIGHT = 3 * math.pow(10, 8)  # in m/s

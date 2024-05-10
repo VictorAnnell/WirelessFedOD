@@ -71,6 +71,7 @@ class WirelessFedODSimulator:
                 steps_per_epoch=self.steps_per_local_epoch,
             )
             car.preprocess_fn = self.preprocess_fn
+            car.bit_rate = self.base_station.get_car_bit_rate(car)
             self.cars.append(car)
 
     def initialize(self):
