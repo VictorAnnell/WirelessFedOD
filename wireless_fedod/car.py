@@ -37,6 +37,7 @@ class Car:
         self.loss = None
         self.bit_rate = 0.0
         self.importance = 0.0
+        self.results = []
 
         # Callbacks
         self.callbacks = []
@@ -93,7 +94,7 @@ class Car:
             callbacks=[coco_metrics_callback] + self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
-        # print(result.history)
+        self.results.append(result)
         self.local_weights = model.get_weights()
 
         # Set loss
