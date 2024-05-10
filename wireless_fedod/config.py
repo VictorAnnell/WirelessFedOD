@@ -3,7 +3,7 @@ import os
 
 from dotenv import load_dotenv
 from models import *  # noqa: F403
-from selection_policies import *  # noqa: F403
+from importance import *  # noqa: F403
 from zod.anno.object import OBJECT_CLASSES
 
 load_dotenv()
@@ -30,7 +30,7 @@ MODEL_FN = os.getenv("MODEL_FN", yolov8_model_fn.__name__)  # noqa: F405
 try:
     MODEL_FN = globals()[MODEL_FN]
 except KeyError:
-    raise ValueError(f"Selection policy {MODEL_FN} not found in selection_policies.py")
+    raise ValueError(f"Model {MODEL_FN} not found in models.py")
 
 # Simulator configuration
 NUM_CLIENTS = int(os.getenv("NUM_CLIENTS", 5))
@@ -44,12 +44,12 @@ except ValueError:
     else:
         raise ValueError(f"Invalid value for STEPS_PER_LOCAL_EPOCH: {STEPS_PER_LOCAL_EPOCH}")
 SIMULATION_ID = os.getenv("SIMULATION_ID", None)
-# Set agent selection policy function:
-AGENT_SELECTION_FN = os.getenv("AGENT_SELECTION_FN", "random_agent_selection")
+# Set agent importance function:
+AGENT_IMPORTANCE_FN = os.getenv("AGENT_IMPORTANCE_FN", "random_based_importance")
 try:
-    AGENT_SELECTION_FN = globals()[AGENT_SELECTION_FN]
+    AGENT_IMPORTANCE_FN = globals()[AGENT_IMPORTANCE_FN]
 except KeyError:
-    raise ValueError(f"Selection policy {AGENT_SELECTION_FN} not found in selection_policies.py")
+    raise ValueError(f"Importance function {AGENT_IMPORTANCE_FN} not found in importance.py")
 
 # Base station configuration
 ALTITUTE_VEHICLE = 1.6  # in m

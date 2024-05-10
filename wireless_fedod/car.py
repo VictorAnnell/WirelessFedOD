@@ -36,6 +36,7 @@ class Car:
         self.deviation = None
         self.loss = None
         self.bit_rate = None
+        self.importance = 0.0
 
         # Callbacks
         self.callbacks = []

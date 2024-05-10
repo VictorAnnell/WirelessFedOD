@@ -7,7 +7,7 @@ import tensorflow as tf
 from car import Car
 from base_station import BaseStation
 from config import (
-    AGENT_SELECTION_FN,
+    AGENT_IMPORTANCE_FN,
     CLASS_MAPPING,
     LOCAL_EPOCHS,
     MODEL_FN,
@@ -34,7 +34,7 @@ class WirelessFedODSimulator:
         self.test_data = None
         self.model_fn = MODEL_FN
         self.metrics = {}
-        self.agent_selection_fn = AGENT_SELECTION_FN
+        self.agent_importance_fn = AGENT_IMPORTANCE_FN
         self.preprocess_fn = preprocess_fn
         self.local_epochs = LOCAL_EPOCHS
         self.steps_per_local_epoch = STEPS_PER_LOCAL_EPOCH
@@ -101,7 +101,8 @@ class WirelessFedODSimulator:
         if self.global_weights is None or self.cars == []:
             self.initialize()
 
-        self.cars_this_round = self.agent_selection_fn(self, self.cars)
+        # Get cars with highest importance scores
+        self.cars_this_round = sorted(self.cars, key=lambda x: x.importance, reverse=True)[: len(self.cars) // 2]
         if len(self.cars_this_round) == 0:
             raise ValueError("No clients selected.")
 
@@ -127,6 +128,7 @@ class WirelessFedODSimulator:
         # Communicate round number to cars
         for car in self.cars:
             car.round_num = self.round_num
+            car.importance = self.agent_importance_fn(self, car)
 
         self.evaluate()
 
