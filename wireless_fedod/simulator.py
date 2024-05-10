@@ -1,6 +1,7 @@
 import datetime
 
 import keras
+import keras_cv
 import numpy as np
 import tensorflow as tf
 from car import Car
@@ -142,7 +143,11 @@ class WirelessFedODSimulator:
         print("Evaluating global model")
         model = self.model_fn()
         model.set_weights(self.global_weights)
-        result = model.evaluate(self.preprocess_fn(self.test_data, validation_dataset=True), callbacks=self.callbacks)
+        preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
+        coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
+            preprocessed_test_data, bounding_box_format="xyxy", cache=False
+        )
+        result = model.evaluate(preprocessed_test_data, callbacks=[coco_metrics_callback] + self.callbacks)
         # Store metrics
         if isinstance(result, list):
             self.metrics = dict(zip(model.metrics_names, result))

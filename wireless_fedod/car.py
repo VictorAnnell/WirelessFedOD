@@ -2,6 +2,7 @@ import random
 from typing import Callable
 
 import keras
+import keras_cv
 import numpy as np
 import tensorflow as tf
 from config import BATCH_SIZE
@@ -80,16 +81,15 @@ class Car:
 
         print(f"Training {self}")
 
-        # coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
-        #     self.preprocessed_test_data, bounding_box_format="xyxy"
-        # )
+        coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
+            self.preprocessed_test_data, bounding_box_format="xyxy", cache=False
+        )
         result = model.fit(
             self.preprocessed_train_data,
             validation_data=self.preprocessed_test_data,
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
-            # callbacks=[coco_metrics_callback] + self.callbacks,
-            callbacks=self.callbacks,
+            callbacks=[coco_metrics_callback] + self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
         # print(result.history)

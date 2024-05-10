@@ -23,7 +23,7 @@ def format_element_fn(image_path, classes, bboxes):
 
 
 def dict_to_tuple_fn(inputs):
-    return inputs["images"], inputs["bounding_boxes"]
+    return inputs["images"], keras_cv.bounding_box.to_dense(inputs["bounding_boxes"], max_boxes=1000) # TODO
 
 
 def visualize_dataset(dataset, preprocess_fn, class_mapping=None, bounding_box_format="xyxy"):

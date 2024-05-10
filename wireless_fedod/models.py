@@ -18,5 +18,6 @@ def yolov8_model_fn() -> keras.Model:
         classification_loss="binary_crossentropy",
         box_loss="ciou",
         optimizer=optimizer,
+        jit_compile=False,
     )
     return model
