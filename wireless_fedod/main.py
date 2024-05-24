@@ -24,7 +24,7 @@ def test_policies():
         simulator = WirelessFedODSimulator(num_clients=10, simulation_id=policy.__name__)
         simulator.train_data = zod_train
         simulator.test_data = zod_test
-        simulator.model_fn = yolov8_model_fn
+        simulator.model_fn = yolov8xs_model_fn
         simulator.importance_fn = policy
         for _ in range(3):
             simulator.run_round()
