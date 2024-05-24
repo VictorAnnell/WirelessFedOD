@@ -59,8 +59,10 @@ class WirelessFedODSimulator:
             raise ValueError("Preprocess function is not set.")
 
         train_data_splits = noniid_split_dataset(self.train_data, self.num_clients)
+        print(f"Distributed training data: {[len(split) for split in train_data_splits]} samples")
         print("Initializing cars")
         for i in range(self.num_clients):
+            print(f"Initializing car {i}")
             car = Car(
                 i,
                 self.model_fn,
@@ -86,6 +88,8 @@ class WirelessFedODSimulator:
         self._file_writer = tf.summary.create_file_writer(f"logs/{self.simulation_id}/global/eval")
         self.round_num = 0
         self.global_weights = self.model_fn().get_weights()
+        print(f'Training data: {len(self.train_data)} samples')
+        print(f'Test data: {len(self.test_data)} samples')
         self.initialize_cars()
 
     def run_round(self):
@@ -102,7 +106,9 @@ class WirelessFedODSimulator:
             self.initialize()
 
         # Get cars with highest importance scores
-        self.cars_this_round = sorted(self.cars, key=lambda x: x.importance, reverse=True)[: max(len(self.cars) // 2, 1)]
+        self.cars_this_round = sorted(self.cars, key=lambda x: x.importance, reverse=True)[
+            : max(len(self.cars) // 2, 1)
+        ]
         if len(self.cars_this_round) == 0:
             raise ValueError("No clients selected.")
 

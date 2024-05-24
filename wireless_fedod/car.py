@@ -69,6 +69,9 @@ class Car:
             test_size = max(test_size, BATCH_SIZE)
             self.test_data = self.train_data.take(test_size)
             self.train_data = self.train_data.skip(test_size)
+            train_size = tf.data.experimental.cardinality(self.train_data).numpy()
+            test_size = tf.data.experimental.cardinality(self.test_data).numpy()
+            print(f"Car {self.id} train data size: {train_size}, test data size: {test_size}")
 
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
@@ -91,6 +94,7 @@ class Car:
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
             callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, f"car_{self.id}_model.h5")] + self.callbacks,
+            steps_per_epoch=self.steps_per_epoch,
         )
         self.results.append(result)
         self.local_weights = model.get_weights()
