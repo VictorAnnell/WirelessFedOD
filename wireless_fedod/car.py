@@ -6,6 +6,7 @@ import keras_cv
 import numpy as np
 import tensorflow as tf
 from config import BATCH_SIZE
+from utils import EvaluateCOCOMetricsCallback
 
 
 class Car:
@@ -92,8 +93,7 @@ class Car:
             validation_data=self.preprocessed_test_data,
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
-            callbacks=[coco_metrics_callback] + self.callbacks,
-            steps_per_epoch=self.steps_per_epoch,
+            callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, f"car_{self.id}_model.h5")] + self.callbacks,
         )
         self.results.append(result)
         self.local_weights = model.get_weights()
@@ -102,7 +102,7 @@ class Car:
         self.loss = result.history["loss"][-1]
 
         # Set mAP
-        self.mAP = result.history["val_AP"][-1]
+        self.mAP = result.history["MaP"][-1]
 
         # Set deviation
         flt_global_weights = np.concatenate(np.asanyarray(self.global_weights, dtype=object), axis=None)

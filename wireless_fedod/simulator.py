@@ -23,6 +23,7 @@ from utils import (
     visualize_dataset,
     visualize_detection,
 )
+from utils import EvaluateCOCOMetricsCallback
 
 
 class WirelessFedODSimulator:
@@ -158,10 +159,9 @@ class WirelessFedODSimulator:
         model = self.model_fn()
         model.set_weights(self.global_weights)
         preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
-        coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
-            preprocessed_test_data, bounding_box_format="xyxy", cache=False
-        )
-        result = model.evaluate(preprocessed_test_data, callbacks=[coco_metrics_callback] + self.callbacks)
+        result = model.evaluate(preprocessed_test_data, callbacks=[
+            EvaluateCOCOMetricsCallback(preprocessed_test_data, "round_model.h5")
+        ] + self.callbacks)
         # Store metrics
         if isinstance(result, list):
             self.metrics = dict(zip(model.metrics_names, result))
