@@ -2,21 +2,27 @@ import math
 import os
 
 from dotenv import load_dotenv
+from zod.anno.object import OBJECT_CLASSES
+
 from wireless_fedod.importance import *  # noqa: F403
 from wireless_fedod.models import *  # noqa: F403
-from zod.anno.object import OBJECT_CLASSES
 
 load_dotenv()
 
 truthy_values = ("true", "1", "yes", "y", "on")
 
+# Env Prefix
+WIRELESS_FEDOD_PREFIX = os.getenv("WIRELESS_FEDOD_PREFIX", "")
+
 # General configuration
-SEED = int(os.getenv("SEED", "0"))
+SEED = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}_SEED", "0"))
 
 # Dataset configuration
-DATASET_ROOT = os.getenv("DATASET_ROOT", "../datasets")
-DATASET_VERSION = os.getenv("DATASET_VERSION", "full")
-DATASET_MAX_IMAGES = os.getenv("DATASET_MAX_IMAGES", 200) if DATASET_VERSION == "full" else "none"
+DATASET_ROOT = os.getenv(f"{WIRELESS_FEDOD_PREFIX}_DATASET_ROOT", "../datasets")
+DATASET_VERSION = os.getenv(f"{WIRELESS_FEDOD_PREFIX}_DATASET_VERSION", "full")
+DATASET_MAX_IMAGES = (
+    os.getenv(f"{WIRELESS_FEDOD_PREFIX}_DATASET_MAX_IMAGES", 200) if DATASET_VERSION == "full" else "none"
+)
 try:
     DATASET_MAX_IMAGES = int(DATASET_MAX_IMAGES)
 except ValueError:
@@ -24,24 +30,24 @@ except ValueError:
         DATASET_MAX_IMAGES = None
     else:
         raise ValueError(f"Invalid value for DATASET_MAX_IMAGES: {DATASET_MAX_IMAGES}")
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1))
-SHUFFLE_BUFFER_SIZE = int(os.getenv("SHUFFLE_BUFFER_SIZE", BATCH_SIZE * 10))
+BATCH_SIZE = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}_BATCH_SIZE", 1))
+SHUFFLE_BUFFER_SIZE = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}_SHUFFLE_BUFFER_SIZE", BATCH_SIZE * 10))
 OBJECT_CLASSES = OBJECT_CLASSES
 CLASS_MAPPING = dict(zip(range(len(OBJECT_CLASSES)), OBJECT_CLASSES))
 
 # Model configuration
 # Set model creation function:
-MODEL_FN = os.getenv("MODEL_FN", yolov8xs_model_fn.__name__)  # noqa: F405
+MODEL_FN = os.getenv(f"{WIRELESS_FEDOD_PREFIX}_MODEL_FN", yolov8xs_model_fn.__name__)  # noqa: F405
 try:
     MODEL_FN = globals()[MODEL_FN]
 except KeyError:
     raise ValueError(f"Model {MODEL_FN} not found in models.py")
-MIXED_PRECISION = os.getenv("MIXED_PRECISION", "False").lower() in truthy_values
+MIXED_PRECISION = os.getenv(f"{WIRELESS_FEDOD_PREFIX}_MIXED_PRECISION", "False").lower() in truthy_values
 
 # Simulator configuration
-NUM_CLIENTS = int(os.getenv("NUM_CLIENTS", 5))
-LOCAL_EPOCHS = int(os.getenv("LOCAL_EPOCHS", 1))
-STEPS_PER_LOCAL_EPOCH = os.getenv("STEPS_PER_LOCAL_EPOCH", "none")
+NUM_CLIENTS = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}_NUM_CLIENTS", 5))
+LOCAL_EPOCHS = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}_LOCAL_EPOCHS", 1))
+STEPS_PER_LOCAL_EPOCH = os.getenv(f"{WIRELESS_FEDOD_PREFIX}_STEPS_PER_LOCAL_EPOCH", "none")
 try:
     STEPS_PER_LOCAL_EPOCH = int(STEPS_PER_LOCAL_EPOCH)
 except ValueError:
@@ -49,15 +55,15 @@ except ValueError:
         STEPS_PER_LOCAL_EPOCH = None
     else:
         raise ValueError(f"Invalid value for STEPS_PER_LOCAL_EPOCH: {STEPS_PER_LOCAL_EPOCH}")
-SIMULATION_ID = os.getenv("SIMULATION_ID", None)
+SIMULATION_ID = os.getenv(f"{WIRELESS_FEDOD_PREFIX}_SIMULATION_ID", None)
 # Set importance function:
-IMPORTANCE_FN = os.getenv("IMPORTANCE_FN", "random_based_importance")
+IMPORTANCE_FN = os.getenv(f"{WIRELESS_FEDOD_PREFIX}_IMPORTANCE_FN", "random_based_importance")
 try:
     IMPORTANCE_FN = globals()[IMPORTANCE_FN]
 except KeyError:
     raise ValueError(f"Importance function {IMPORTANCE_FN} not found in importance.py")
-LEARNING_IMPORTANCE_WEIGHT = float(os.getenv("LEARNING_IMPORTANCE_WEIGHT", 0.5))
-NETWORK_IMPORTANCE_WEIGHT = float(os.getenv("NETWORK_IMPORTANCE_WEIGHT", 0.5))
+LEARNING_IMPORTANCE_WEIGHT = float(os.getenv(f"{WIRELESS_FEDOD_PREFIX}_LEARNING_IMPORTANCE_WEIGHT", 0.5))
+NETWORK_IMPORTANCE_WEIGHT = float(os.getenv(f"{WIRELESS_FEDOD_PREFIX}_NETWORK_IMPORTANCE_WEIGHT", 0.5))
 # Scale weights to sum to 1
 importance_weight_sum = LEARNING_IMPORTANCE_WEIGHT + NETWORK_IMPORTANCE_WEIGHT
 LEARNING_IMPORTANCE_WEIGHT /= importance_weight_sum
@@ -65,7 +71,7 @@ NETWORK_IMPORTANCE_WEIGHT /= importance_weight_sum
 
 # Wireless network configuration
 BANDWIDTH = 20e6  # in Hz
-SIGNAL_POWER = 1  # in Watt
+SIGNAL_POWER = 49  # in dBm for 10MHz. For 20 MHz it is 49 dBm 1  # in Watt
 NOISE_POWER = 1  # in Watt
 SNR = SIGNAL_POWER / NOISE_POWER
 
