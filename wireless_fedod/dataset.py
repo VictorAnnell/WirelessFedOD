@@ -17,7 +17,7 @@ def preprocess_fn(dataset, validation_dataset=False):
     if validation_dataset:
         augmenters = keras_cv.layers.Augmenter(
             [
-                keras_cv.layers.Resizing(640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy"),
+                keras_cv.layers.Resizing(640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy", dtype=tf.float32),
             ],
         )
     else:
@@ -25,11 +25,7 @@ def preprocess_fn(dataset, validation_dataset=False):
         augmenters = keras_cv.layers.Augmenter(
             [
                 keras_cv.layers.RandomFlip(mode="horizontal", bounding_box_format="xyxy"),
-                keras_cv.layers.JitteredResize(
-                    target_size=(640, 640),
-                    scale_factor=(0.75, 1.3),
-                    bounding_box_format="xyxy",
-                ),
+                keras_cv.layers.Resizing(640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy", dtype=tf.float32),
             ],
         )
     dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
