@@ -2,8 +2,8 @@ import math
 import os
 
 from dotenv import load_dotenv
-from importance import *  # noqa: F403
-from models import *  # noqa: F403
+from wireless_fedod.importance import *  # noqa: F403
+from wireless_fedod.models import *  # noqa: F403
 from zod.anno.object import OBJECT_CLASSES
 
 load_dotenv()
@@ -31,7 +31,7 @@ CLASS_MAPPING = dict(zip(range(len(OBJECT_CLASSES)), OBJECT_CLASSES))
 
 # Model configuration
 # Set model creation function:
-MODEL_FN = os.getenv("MODEL_FN", yolov8_model_fn.__name__)  # noqa: F405
+MODEL_FN = os.getenv("MODEL_FN", yolov8xs_model_fn.__name__)  # noqa: F405
 try:
     MODEL_FN = globals()[MODEL_FN]
 except KeyError:

@@ -5,8 +5,8 @@ import keras
 import keras_cv
 import numpy as np
 import tensorflow as tf
-from config import BATCH_SIZE
-from utils import EvaluateCOCOMetricsCallback
+from wireless_fedod.config import BATCH_SIZE
+from wireless_fedod.utils import EvaluateCOCOMetricsCallback
 
 
 class Car:
@@ -85,9 +85,6 @@ class Car:
 
         print(f"Training {self}")
 
-        coco_metrics_callback = keras_cv.callbacks.PyCOCOCallback(
-            self.preprocessed_test_data, bounding_box_format="xyxy", cache=False
-        )
         result = model.fit(
             self.preprocessed_train_data,
             validation_data=self.preprocessed_test_data,

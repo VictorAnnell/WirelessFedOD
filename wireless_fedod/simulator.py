@@ -5,9 +5,10 @@ import keras
 import keras_cv
 import numpy as np
 import tensorflow as tf
-from base_station import BaseStation
-from car import Car
-from config import (
+
+from wireless_fedod.base_station import BaseStation
+from wireless_fedod.car import Car
+from wireless_fedod.config import (
     CLASS_MAPPING,
     IMPORTANCE_FN,
     LOCAL_EPOCHS,
@@ -17,13 +18,8 @@ from config import (
     SIMULATION_ID,
     STEPS_PER_LOCAL_EPOCH,
 )
-from dataset import noniid_split_dataset, preprocess_fn
-from utils import (
-    fedavg_aggregate,
-    visualize_dataset,
-    visualize_detection,
-)
-from utils import EvaluateCOCOMetricsCallback
+from wireless_fedod.dataset import noniid_split_dataset, preprocess_fn
+from wireless_fedod.utils import EvaluateCOCOMetricsCallback, fedavg_aggregate, visualize_dataset, visualize_detection
 
 
 class WirelessFedODSimulator:

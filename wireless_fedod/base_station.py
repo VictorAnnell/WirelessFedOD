@@ -1,6 +1,6 @@
 import math
 
-from config import (
+from wireless_fedod.config import (
     ALTITUTE_BS,
     ALTITUTE_VEHICLE,
     BEAMS_AZIMUTH,

@@ -4,9 +4,9 @@ import keras_cv
 import numpy as np
 import tensorflow as tf
 import zod.constants as constants
-from config import BATCH_SIZE, CLASS_MAPPING, DATASET_MAX_IMAGES, DATASET_ROOT, DATASET_VERSION, SHUFFLE_BUFFER_SIZE
+from wireless_fedod.config import BATCH_SIZE, CLASS_MAPPING, DATASET_MAX_IMAGES, DATASET_ROOT, DATASET_VERSION, SHUFFLE_BUFFER_SIZE
 from tqdm.auto import tqdm
-from utils import dict_to_tuple_fn, format_element_fn
+from wireless_fedod.utils import dict_to_tuple_fn, format_element_fn
 from zod import ZodFrames
 from zod.constants import AnnotationProject, Anonymization
 

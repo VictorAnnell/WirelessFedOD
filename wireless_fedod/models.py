@@ -3,7 +3,7 @@ import keras_cv
 
 
 def yolov8xs_model_fn() -> keras.Model:
-    from config import OBJECT_CLASSES
+    from wireless_fedod.config import OBJECT_CLASSES
 
     model = keras_cv.models.YOLOV8Detector(
         num_classes=len(OBJECT_CLASSES),
@@ -25,7 +25,7 @@ def yolov8xs_model_fn() -> keras.Model:
 
 
 def yolov8xs_coco_model_fn() -> keras.Model:
-    from config import OBJECT_CLASSES
+    from wireless_fedod.config import OBJECT_CLASSES
 
     base_model = keras_cv.models.YOLOV8Detector(
         num_classes=len(OBJECT_CLASSES),
@@ -43,7 +43,7 @@ def yolov8xs_coco_model_fn() -> keras.Model:
     return base_model
 
 def yolov8s_coco_model_fn() -> keras.Model:
-    from config import OBJECT_CLASSES
+    from wireless_fedod.config import OBJECT_CLASSES
 
     base_model = keras_cv.models.YOLOV8Detector(
         num_classes=len(OBJECT_CLASSES),
@@ -66,7 +66,7 @@ def yolov8s_coco_model_fn() -> keras.Model:
     return base_model
 
 def retinanet_resnet50_model_fn() -> keras.Model:
-    from config import OBJECT_CLASSES
+    from wireless_fedod.config import OBJECT_CLASSES
 
     model = keras_cv.models.RetinaNet(
         num_classes=len(OBJECT_CLASSES),
@@ -84,7 +84,7 @@ def retinanet_resnet50_model_fn() -> keras.Model:
 
 
 def retinanet_resnet50_imagenet_model_fn() -> keras.Model:
-    from config import OBJECT_CLASSES
+    from wireless_fedod.config import OBJECT_CLASSES
 
     model = keras_cv.models.RetinaNet(
         num_classes=len(OBJECT_CLASSES),

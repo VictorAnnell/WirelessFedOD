@@ -99,7 +99,7 @@ def visualize_detection(model, dataset, preprocess_fn, class_mapping=None, bound
 
 def weight_scalling_factor(cars, car):
     # get the bs
-    from dataset import BATCH_SIZE  # TODO: remove this when batch size is configurable
+    from wireless_fedod.dataset import BATCH_SIZE  # TODO: remove this when batch size is configurable
 
     bs = BATCH_SIZE
     # first calculate the total training data points across clinets
