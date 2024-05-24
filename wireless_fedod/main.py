@@ -8,13 +8,18 @@ from simulator import WirelessFedODSimulator
 
 load_dotenv()
 
+
 # Mixed precision
 if MIXED_PRECISION:
+    print('Mixed precision enabled')
     keras.mixed_precision.set_global_policy("mixed_float16")
 
 # Sets the seed for NumPy, TensorFlow, Keras, and random
-if SEED != -1:
-    keras.utils.set_random_seed(SEED)
+if SEED == -1:
+    # Set random seed
+    SEED = random.randint(0, 1000000)
+print(f"Random seed: {SEED}")
+keras.utils.set_random_seed(SEED)
 
 
 def test_policies():
