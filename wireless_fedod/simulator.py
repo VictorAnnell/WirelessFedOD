@@ -1,5 +1,6 @@
 import datetime
 
+import gc
 import keras
 import keras_cv
 import numpy as np
@@ -10,6 +11,7 @@ from config import (
     CLASS_MAPPING,
     IMPORTANCE_FN,
     LOCAL_EPOCHS,
+    MIXED_PRECISION,
     MODEL_FN,
     NUM_CLIENTS,
     SIMULATION_ID,
@@ -111,12 +113,18 @@ class WirelessFedODSimulator:
         print(", ".join(str(car) for car in self.cars_this_round))
 
         for car in self.cars_this_round:
-            try:
-                keras.backend.clear_session(free_memory=True)
-            except AttributeError:
-                keras.backend.clear_session()
             car.global_weights = self.global_weights
             car.train()
+            try: # Keras 3
+                keras.backend.clear_session(free_memory=True)
+            except TypeError: # Keras 2
+                keras.backend.clear_session()
+            # if MIXED_PRECISION:
+            #     print('Mixed precision enabled')
+            #     keras.mixed_precision.set_global_policy("mixed_float16")
+            # tf.compat.v1.reset_default_graph()
+            # gc.collect()
+            # TODO: set seed again?
 
         # Update global weights with the scaled average of the local weights
         total_samples = sum(len(car.train_data) for car in self.cars_this_round)
