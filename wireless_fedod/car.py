@@ -5,7 +5,8 @@ import keras
 import keras_cv
 import numpy as np
 import tensorflow as tf
-from wireless_fedod.config import BATCH_SIZE
+
+from wireless_fedod.config import BATCH_SIZE, RECREATE_MODEL
 from wireless_fedod.utils import EvaluateCOCOMetricsCallback
 
 
@@ -24,6 +25,7 @@ class Car:
         self.steps_per_epoch = steps_per_epoch
         self.location = (random.uniform(-100, 100), random.uniform(-100, 100))
         self.model_fn = model_fn
+        self.model = None
         self.preprocess_fn = None
         self.test_data = None
         self.train_data = train_data
@@ -75,8 +77,9 @@ class Car:
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
 
-        model = self.model_fn()
-        model.set_weights(self.global_weights)
+        if self.model is None or RECREATE_MODEL:
+            self.model = self.model_fn()
+        self.model.set_weights(self.global_weights)
 
         if self.preprocessed_train_data is None:
             print("Preprocessing train data for", self)
@@ -87,15 +90,16 @@ class Car:
 
         print(f"Training {self}")
 
-        result = model.fit(
+        result = self.model.fit(
             self.preprocessed_train_data,
             validation_data=self.preprocessed_test_data,
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
-            callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, f"car_{self.id}_model.h5")] + self.callbacks,
+            callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, f"car_{self.id}_model.h5")]
+            + self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
-        self.local_weights = model.get_weights()
+        self.local_weights = self.model.get_weights()
 
         # Set loss
         self.loss = result.history["loss"][-1]

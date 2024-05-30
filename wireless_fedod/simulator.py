@@ -1,6 +1,6 @@
 import datetime
-
 import gc
+
 import keras
 import keras_cv
 import numpy as np
@@ -15,6 +15,7 @@ from wireless_fedod.config import (
     MIXED_PRECISION,
     MODEL_FN,
     NUM_CLIENTS,
+    RECREATE_MODEL,
     SIMULATION_ID,
     STEPS_PER_LOCAL_EPOCH,
 )
@@ -55,8 +56,8 @@ class WirelessFedODSimulator:
             raise ValueError("Training data is not set.")
         if self.test_data is None:
             raise ValueError("Test data is not set.")
-        if self.model_fn is None:
-            raise ValueError("Model function is not set.")
+        if self.model_fn is None and self.model is None:
+            raise ValueError("Neither a model function or model is set.")
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
 
@@ -75,6 +76,10 @@ class WirelessFedODSimulator:
             )
             car.preprocess_fn = self.preprocess_fn
             car.bit_rate = self.base_station.get_car_bit_rate(car)
+            if not RECREATE_MODEL:  # If we are not recreating the model, we share the same model instance with all cars
+                if self.model is None:
+                    self.model = self.model_fn()
+                car.model = self.model
             self.cars.append(car)
 
     def initialize(self):
@@ -90,13 +95,13 @@ class WirelessFedODSimulator:
         self._file_writer = tf.summary.create_file_writer(f"logs/{self.simulation_id}/global/eval")
         self.round_num = 0
         self.global_weights = self.model_fn().get_weights()
-        print(f'Training data: {len(self.train_data)} samples')
-        print(f'Test data: {len(self.test_data)} samples')
+        print(f"Training data: {len(self.train_data)} samples")
+        print(f"Test data: {len(self.test_data)} samples")
         self.initialize_cars()
 
     def run_round(self):
-        if self.model_fn is None:
-            raise ValueError("Model function is not set.")
+        if self.model_fn is None and self.model is None:
+            raise ValueError("Neither a model function or model is set.")
         if self.train_data is None:
             raise ValueError("Training data is not set.")
         if self.test_data is None:
@@ -120,9 +125,9 @@ class WirelessFedODSimulator:
         for car in self.cars_this_round:
             car.global_weights = self.global_weights
             car.train()
-            try: # Keras 3
+            try:  # Keras 3
                 keras.backend.clear_session(free_memory=True)
-            except TypeError: # Keras 2
+            except TypeError:  # Keras 2
                 keras.backend.clear_session()
             # if MIXED_PRECISION:
             #     print('Mixed precision enabled')
@@ -150,8 +155,8 @@ class WirelessFedODSimulator:
         self.evaluate()
 
     def evaluate(self):
-        if self.model_fn is None:
-            raise ValueError("Model function is not set.")
+        if self.model_fn is None and self.model is None:
+            raise ValueError("Neither a model function or model is set.")
         if self.test_data is None:
             raise ValueError("Test data is not set.")
         if self.preprocess_fn is None:
@@ -160,25 +165,29 @@ class WirelessFedODSimulator:
             raise ValueError("Global weights are not set, run a round first.")
 
         print("Evaluating global model")
-        self.model = self.model_fn()
+        if self.model is None or RECREATE_MODEL:
+            self.model = self.model_fn()
         self.model.set_weights(self.global_weights)
         preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
-        self.result = self.model.evaluate(preprocessed_test_data, callbacks=[
-            EvaluateCOCOMetricsCallback(preprocessed_test_data, "round_model.h5")
-        ] + self.callbacks, return_dict=True)
+        self.result = self.model.evaluate(
+            preprocessed_test_data,
+            callbacks=[EvaluateCOCOMetricsCallback(preprocessed_test_data, "round_model.h5")] + self.callbacks,
+            return_dict=True,
+        )
 
         self.handle_metrics()
         self.print_metrics()
 
     def handle_metrics(self):
-        """ Calculate and store metrics for the round. """
+        """Calculate and store metrics for the round."""
         self.metrics = self.result
 
         # Calculate average MaP across all cars
         MaP = sum(car.MaP for car in self.cars) / len(self.cars)
         self.metrics["mean_car_MaP"] = MaP
-        # Calculate average loss across all cars
-        loss = sum(car.loss for car in self.cars) / len(self.cars)
+        # Calculate average loss across all cars, ignoring cars that did not train yet
+        car_losses = [car.loss for car in self.cars if car.loss is not None]
+        loss = sum(car_losses) / len(car_losses)
         self.metrics["mean_car_loss"] = loss
 
         with self._file_writer.as_default(step=self.round_num):

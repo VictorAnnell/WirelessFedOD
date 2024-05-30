@@ -43,6 +43,7 @@ try:
 except KeyError:
     raise ValueError(f"Model {MODEL_FN} not found in models.py")
 MIXED_PRECISION = os.getenv(f"{WIRELESS_FEDOD_PREFIX}MIXED_PRECISION", "False").lower() in truthy_values
+RECREATE_MODEL = os.getenv(f"{WIRELESS_FEDOD_PREFIX}RECREATE_MODEL", "False").lower() in truthy_values
 
 # Simulator configuration
 NUM_CLIENTS = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}NUM_CLIENTS", 5))
