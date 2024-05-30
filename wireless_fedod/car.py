@@ -39,7 +39,6 @@ class Car:
         self.MaP = 0.0
         self.bit_rate = 0.0
         self.importance = 0.0
-        self.results = []
 
         # Callbacks
         self.callbacks = []
@@ -96,7 +95,6 @@ class Car:
             callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, f"car_{self.id}_model.h5")] + self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
-        self.results.append(result)
         self.local_weights = model.get_weights()
 
         # Set loss
