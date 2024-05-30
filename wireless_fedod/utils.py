@@ -32,6 +32,23 @@ class EvaluateCOCOMetricsCallback(keras.callbacks.Callback):
 
         return logs
 
+    def on_test_end(self, logs):
+        self.metrics.reset_state()
+        for batch in self.data:
+            images, y_true = batch[0], batch[1]
+            y_pred = self.model.predict(images, verbose=0)
+            self.metrics.update_state(y_true, y_pred)
+
+        metrics = self.metrics.result(force=True)
+        logs.update(metrics)
+
+        current_map = metrics["MaP"]
+        if current_map > self.best_map:
+            self.best_map = current_map
+            self.model.save(self.save_path)  # Save the model when mAP improves
+
+        return logs
+
 def load_image(image_path):
     image = tf.io.read_file(image_path)
     image = tf.image.decode_jpeg(image, channels=3)

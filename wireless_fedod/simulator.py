@@ -32,7 +32,6 @@ class WirelessFedODSimulator:
         self.train_data = None
         self.test_data = None
         self.model_fn = MODEL_FN
-        self.metrics = {}
         self.importance_fn = IMPORTANCE_FN
         self.preprocess_fn = preprocess_fn
         self.local_epochs = LOCAL_EPOCHS
@@ -44,6 +43,9 @@ class WirelessFedODSimulator:
         self.callbacks = []
         self.base_stations = []
         self.base_station = BaseStation(0, (0, 0))
+        self.model = None
+        self.result = None
+        self.metrics = None
 
     def __str__(self):
         return f"WirelessFedODSimulator {self.simulation_id}"
@@ -158,18 +160,30 @@ class WirelessFedODSimulator:
             raise ValueError("Global weights are not set, run a round first.")
 
         print("Evaluating global model")
-        model = self.model_fn()
-        model.set_weights(self.global_weights)
+        self.model = self.model_fn()
+        self.model.set_weights(self.global_weights)
         preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
-        result = model.evaluate(preprocessed_test_data, callbacks=[
+        self.result = self.model.evaluate(preprocessed_test_data, callbacks=[
             EvaluateCOCOMetricsCallback(preprocessed_test_data, "round_model.h5")
-        ] + self.callbacks)
-        # Store metrics
-        if isinstance(result, list):
-            self.metrics = dict(zip(model.metrics_names, result))
-        else:
-            self.metrics = {"loss": result}
-        self.print_metrics(model, result)
+        ] + self.callbacks, return_dict=True)
+
+        self.handle_metrics()
+        self.print_metrics()
+
+    def handle_metrics(self):
+        """ Calculate and store metrics for the round. """
+        self.metrics = self.result
+
+        # Calculate average MaP across all cars
+        MaP = sum(car.MaP for car in self.cars) / len(self.cars)
+        self.metrics["mean_car_MaP"] = MaP
+        # Calculate average loss across all cars
+        loss = sum(car.loss for car in self.cars) / len(self.cars)
+        self.metrics["mean_car_loss"] = loss
+
+        with self._file_writer.as_default(step=self.round_num):
+            for name, value in self.metrics.items():
+                tf.summary.scalar(f"round_{name}", value)
 
     def visualize_detection(self):
         if self.model_fn is None:
@@ -205,15 +219,9 @@ class WirelessFedODSimulator:
         print(f"Visualizing {type} dataset")
         visualize_dataset(dataset, self.preprocess_fn, class_mapping=CLASS_MAPPING)
 
-    def print_metrics(self, model, result):
+    def print_metrics(self):
         print()
         print("Round Metrics:")
-        with self._file_writer.as_default(step=self.round_num):
-            if isinstance(result, list):
-                for name, value in zip(model.metrics_names, result):
-                    print(f"{name}: {value:.4f}", end=", ")
-                    tf.summary.scalar(f"round_{name}", value)
-            else:
-                print(f"loss: {result:.4f}", end=", ")
-                tf.summary.scalar("round_loss", result)
+        for name, value in self.metrics.items():
+            print(f"{name}: {value:.4f}")
         print(end="\n\n")
