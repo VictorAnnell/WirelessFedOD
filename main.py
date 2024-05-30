@@ -1,8 +1,10 @@
 import random
+
 import keras
-from wireless_fedod.config import MIXED_PRECISION, SEED
-from wireless_fedod.dataset import load_zod
 from dotenv import load_dotenv
+
+from wireless_fedod.config import MIXED_PRECISION, NUM_ROUNDS, SEED
+from wireless_fedod.dataset import load_zod
 from wireless_fedod.simulator import WirelessFedODSimulator
 
 load_dotenv()
@@ -29,4 +31,5 @@ if __name__ == "__main__":
     # Set dataset
     simulator.train_data = zod_train
     simulator.test_data = zod_test
-    simulator.run_round()
+    for _ in range(NUM_ROUNDS):
+        simulator.run_round()

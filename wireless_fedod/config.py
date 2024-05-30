@@ -16,6 +16,7 @@ WIRELESS_FEDOD_PREFIX = os.getenv("WIRELESS_FEDOD_PREFIX", "")
 
 # General configuration
 SEED = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}SEED", "0"))
+NUM_ROUNDS = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}NUM_ROUNDS", 1))
 
 # Dataset configuration
 DATASET_ROOT = os.getenv(f"{WIRELESS_FEDOD_PREFIX}DATASET_ROOT", "../datasets")
