@@ -42,27 +42,31 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
     image_paths = []
     bbox = []
     class_ids = []
-    for frame_id in tqdm(frame_ids, desc="Processing frames", unit="frame", dynamic_ncols=True):
-        frame_bboxs = []
-        frame_classes = []
-        frame_has_2d_bbox = False
-        frame = zod_frames[frame_id]
-        image_path = frame.info.get_key_camera_frame(Anonymization.BLUR).filepath
-        annotations = frame.get_annotation(AnnotationProject.OBJECT_DETECTION)
-        for annotation in annotations:
-            if annotation.box2d:
-                # Only include frame in dataset if it has 2d bounding boxes
-                frame_has_2d_bbox = True
-                frame_bboxs.append(annotation.box2d.xyxy)
-                frame_classes.append(annotation.superclass)
-        if frame_has_2d_bbox:
-            image_paths.append(image_path)
-            bbox.append(frame_bboxs)
-            # Convert classes to class_ids
-            frame_class_ids = [
-                list(CLASS_MAPPING.keys())[list(CLASS_MAPPING.values()).index(cls)] for cls in frame_classes
-            ]
-            class_ids.append(frame_class_ids)
+    for frame_id in tqdm(frame_ids, desc="Processing frames", unit="frame"):
+        try:
+            frame_bboxs = []
+            frame_classes = []
+            frame_has_2d_bbox = False
+            frame = zod_frames[frame_id]
+            image_path = frame.info.get_key_camera_frame(Anonymization.BLUR).filepath
+            annotations = frame.get_annotation(AnnotationProject.OBJECT_DETECTION)
+            for annotation in annotations:
+                if annotation.box2d:
+                    # Only include frame in dataset if it has 2d bounding boxes
+                    frame_has_2d_bbox = True
+                    frame_bboxs.append(annotation.box2d.xyxy)
+                    frame_classes.append(annotation.name)
+            if frame_has_2d_bbox:
+                image_paths.append(image_path)
+                bbox.append(frame_bboxs)
+                # Convert classes to class_ids
+                frame_class_ids = [
+                    list(CLASS_MAPPING.keys())[list(CLASS_MAPPING.values()).index(cls)] for cls in frame_classes
+                ]
+                class_ids.append(frame_class_ids)
+        except:
+            pass
+
     bbox_tensor = tf.ragged.constant(bbox)
     # TODO: fix
     converted_bbox_tensor = keras_cv.bounding_box.convert_format(bbox_tensor, bounding_box_format, "xyxy")
