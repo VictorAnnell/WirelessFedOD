@@ -99,6 +99,7 @@ class WirelessFedODSimulator:
         if self.model is None:
             self.model = self.model_fn()
         self.global_weights = self.model.get_weights()
+        self.preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
         print(f"Training data: {len(self.train_data)} samples")
         print(f"Test data: {len(self.test_data)} samples")
         self.initialize_cars()
@@ -167,10 +168,9 @@ class WirelessFedODSimulator:
         if self.model is None or RECREATE_MODEL:
             self.model = self.model_fn()
         self.model.set_weights(self.global_weights)
-        self.preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
         self.result = self.model.evaluate(
             self.preprocessed_test_data,
-            callbacks=[EvaluateCOCOMetricsCallback(preprocessed_test_data, "round_model.h5")] + self.callbacks,
+            callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, "round_model.h5")] + self.callbacks,
             return_dict=True,
         )
 
