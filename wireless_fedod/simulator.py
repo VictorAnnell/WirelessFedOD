@@ -167,9 +167,9 @@ class WirelessFedODSimulator:
         if self.model is None or RECREATE_MODEL:
             self.model = self.model_fn()
         self.model.set_weights(self.global_weights)
-        preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
+        self.preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
         self.result = self.model.evaluate(
-            preprocessed_test_data,
+            self.preprocessed_test_data,
             callbacks=[EvaluateCOCOMetricsCallback(preprocessed_test_data, "round_model.h5")] + self.callbacks,
             return_dict=True,
         )

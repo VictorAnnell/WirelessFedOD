@@ -12,7 +12,7 @@ from zod.constants import AnnotationProject, Anonymization
 
 
 # Data pipeline preprocessing function
-def preprocess_fn(dataset, validation_dataset=False):
+def preprocess_fn(dataset, validation_dataset=False, batch_size=BATCH_SIZE):
     dataset = dataset.map(format_element_fn, num_parallel_calls=tf.data.AUTOTUNE)
     if validation_dataset:
         augmenters = keras_cv.layers.Augmenter(
@@ -28,9 +28,11 @@ def preprocess_fn(dataset, validation_dataset=False):
                 keras_cv.layers.Resizing(640, 640, pad_to_aspect_ratio=True, bounding_box_format="xyxy", dtype=tf.float32),
             ],
         )
-    dataset = dataset.ragged_batch(BATCH_SIZE, drop_remainder=True)
+
     dataset = dataset.map(augmenters, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.map(dict_to_tuple_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.cache()
+    dataset = dataset.ragged_batch(batch_size, drop_remainder=not validation_dataset)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
 
