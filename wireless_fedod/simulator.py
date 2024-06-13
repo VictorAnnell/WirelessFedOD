@@ -16,6 +16,7 @@ from wireless_fedod.config import (
     MODEL_FN,
     NUM_CLIENTS,
     RECREATE_MODEL,
+    SHARE_MODEL,
     SIMULATION_ID,
     STEPS_PER_LOCAL_EPOCH,
 )
@@ -76,7 +77,7 @@ class WirelessFedODSimulator:
             )
             car.preprocess_fn = self.preprocess_fn
             car.bit_rate = self.base_station.get_car_bit_rate(car)
-            if not RECREATE_MODEL:  # If we are not recreating the model, we share the same model instance with all cars
+            if SHARE_MODEL:
                 if self.model is None:
                     self.model = self.model_fn()
                 car.model = self.model
@@ -96,9 +97,8 @@ class WirelessFedODSimulator:
         self._file_writer = tf.summary.create_file_writer(f"logs/{self.simulation_id}/global/eval")
         self.round_num = 0
         if self.model is None:
-            self.global_weights = self.model_fn().get_weights()
-        else:
-            self.global_weights = self.model.get_weights()
+            self.model = self.model_fn()
+        self.global_weights = self.model.get_weights()
         print(f"Training data: {len(self.train_data)} samples")
         print(f"Test data: {len(self.test_data)} samples")
         self.initialize_cars()
@@ -129,7 +129,7 @@ class WirelessFedODSimulator:
         for car in self.cars_this_round:
             car.global_weights = self.global_weights
             car.train()
-            if RECREATE_MODEL:  # If we are recreating the model, we need to reset the keras session to not leak memory
+            if not RECREATE_MODEL:  # If we are using more than one model, we need to reset the keras session
                 try:  # Keras 3
                     keras.backend.clear_session(free_memory=True)
                 except TypeError:  # Keras 2
