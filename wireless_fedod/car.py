@@ -29,8 +29,6 @@ class Car:
         self.preprocess_fn = None
         self.test_data = None
         self.train_data = train_data
-        self.preprocessed_test_data = None
-        self.preprocessed_train_data = None
         self.local_weights = None
         self.global_weights = None
         self.simulation_id = simulation_id
@@ -61,6 +59,7 @@ class Car:
     def initialize(self):
         if self.train_data is None:
             raise ValueError("Training data is not set.")
+
         if self.test_data is None:
             # Split train data into train/test with ratio 'test_split', giving test at least BATCH_SIZE elements
             train_size = tf.data.experimental.cardinality(self.train_data).numpy()
@@ -72,6 +71,12 @@ class Car:
             test_size = tf.data.experimental.cardinality(self.test_data).numpy()
             print(f"Car {self.id} train data size: {train_size}, test data size: {test_size}")
 
+        if self.preprocess_fn is None:
+            raise ValueError("Preprocess function is not set.")
+
+        self.train_data = self.preprocess_fn(self.train_data)
+        self.test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
+
     def train(self):
         if self.model_fn is None and self.model is None:
             raise ValueError("Neither a model function or model is set.")
@@ -80,25 +85,15 @@ class Car:
         if self.test_data is None:
             self.initialize()
 
-        if self.preprocess_fn is None:
-            raise ValueError("Preprocess function is not set.")
-
         if self.model is None or RECREATE_MODEL:
             self.model = self.model_fn()
         self.model.set_weights(self.global_weights)
 
-        if self.preprocessed_train_data is None:
-            print("Preprocessing train data for", self)
-            self.preprocessed_train_data = self.preprocess_fn(self.train_data)
-        if self.preprocessed_test_data is None:
-            print("Preprocessing test data for", self)
-            self.preprocessed_test_data = self.preprocess_fn(self.test_data, validation_dataset=True)
-
         print(f"Training {self}")
 
         result = self.model.fit(
-            self.preprocessed_train_data,
-            validation_data=self.preprocessed_test_data,
+            self.train_data,
+            validation_data=self.test_data,
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
             callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, f"car_{self.id}_model.h5")]
@@ -120,7 +115,3 @@ class Car:
         # print(
         #     f"{self} deviation: {self.deviation}, local weights sum: {np.sum(flt_local_weights)}, global weights sum: {np.sum(flt_global_weights)}"
         # )
-
-        # Clear preproccessed data to save memory
-        self.preprocessed_test_data = None
-        self.preprocessed_train_data = None
