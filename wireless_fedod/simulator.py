@@ -129,16 +129,11 @@ class WirelessFedODSimulator:
         for car in self.cars_this_round:
             car.global_weights = self.global_weights
             car.train()
-            try:  # Keras 3
-                keras.backend.clear_session(free_memory=True)
-            except TypeError:  # Keras 2
-                keras.backend.clear_session()
-            # if MIXED_PRECISION:
-            #     print('Mixed precision enabled')
-            #     keras.mixed_precision.set_global_policy("mixed_float16")
-            # tf.compat.v1.reset_default_graph()
-            # gc.collect()
-            # TODO: set seed again?
+            if RECREATE_MODEL:  # If we are recreating the model, we need to reset the keras session to not leak memory
+                try:  # Keras 3
+                    keras.backend.clear_session(free_memory=True)
+                except TypeError:  # Keras 2
+                    keras.backend.clear_session()
 
         # Update global weights with the scaled average of the local weights
         total_samples = sum(len(car.train_data) for car in self.cars_this_round)
