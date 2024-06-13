@@ -95,7 +95,10 @@ class WirelessFedODSimulator:
         )
         self._file_writer = tf.summary.create_file_writer(f"logs/{self.simulation_id}/global/eval")
         self.round_num = 0
-        self.global_weights = self.model_fn().get_weights()
+        if self.model is None:
+            self.global_weights = self.model_fn().get_weights()
+        else:
+            self.global_weights = self.model.get_weights()
         print(f"Training data: {len(self.train_data)} samples")
         print(f"Test data: {len(self.test_data)} samples")
         self.initialize_cars()
@@ -231,7 +234,7 @@ class WirelessFedODSimulator:
 
     def print_metrics(self):
         print()
-        print("Round Metrics:")
+        print(f"Round {self.round_num} Metrics:")
         for name, value in self.metrics.items():
             print(f"{name}: {value:.4f}")
         print(end="\n\n")

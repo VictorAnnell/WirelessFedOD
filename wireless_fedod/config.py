@@ -20,7 +20,7 @@ NUM_ROUNDS = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}NUM_ROUNDS", 1))
 
 # Dataset configuration
 DATASET_ROOT = os.getenv(f"{WIRELESS_FEDOD_PREFIX}DATASET_ROOT", "../datasets")
-DATASET_VERSION = os.getenv(f"{WIRELESS_FEDOD_PREFIX}DATASET_VERSION", "full")
+DATASET_VERSION = os.getenv(f"{WIRELESS_FEDOD_PREFIX}DATASET_VERSION", "full").lower()
 DATASET_MAX_IMAGES = (
     os.getenv(f"{WIRELESS_FEDOD_PREFIX}DATASET_MAX_IMAGES", 200) if DATASET_VERSION == "full" else "none"
 )
