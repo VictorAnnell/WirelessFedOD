@@ -80,6 +80,7 @@ class WirelessFedODSimulator:
                 if self.model is None:
                     self.model = self.model_fn()
                 car.model = self.model
+            car.initialize()
             self.cars.append(car)
 
     def initialize(self):

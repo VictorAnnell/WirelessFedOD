@@ -58,9 +58,7 @@ class Car:
     def __str__(self):
         return f"Car {self.id}"
 
-    def train(self):
-        if self.model_fn is None:
-            raise ValueError("Model function is not set.")
+    def initialize(self):
         if self.train_data is None:
             raise ValueError("Training data is not set.")
         if self.test_data is None:
@@ -73,6 +71,14 @@ class Car:
             train_size = tf.data.experimental.cardinality(self.train_data).numpy()
             test_size = tf.data.experimental.cardinality(self.test_data).numpy()
             print(f"Car {self.id} train data size: {train_size}, test data size: {test_size}")
+
+    def train(self):
+        if self.model_fn is None and self.model is None:
+            raise ValueError("Neither a model function or model is set.")
+        if self.train_data is None:
+            raise ValueError("Training data is not set.")
+        if self.test_data is None:
+            self.initialize()
 
         if self.preprocess_fn is None:
             raise ValueError("Preprocess function is not set.")
