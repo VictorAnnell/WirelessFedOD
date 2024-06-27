@@ -42,7 +42,8 @@ class WirelessFedODSimulator:
         self.cars = []
         self.global_weights = None
         self.num_clients = num_clients
-        self.callbacks = []
+        self.callbacks = [keras.callbacks.ModelCheckpoint(f"simulator_model.keras", monitor="val_loss", save_best_only=True)]
+
         self.base_stations = []
         self.base_station = BaseStation(0, (0, 0))
         self.model = None
@@ -170,9 +171,17 @@ class WirelessFedODSimulator:
         self.model.set_weights(self.global_weights)
         self.result = self.model.evaluate(
             self.preprocessed_test_data,
-            callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, "round_model.h5")] + self.callbacks,
+            #callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, "round_model.h5")] + self.callbacks,
+            callbacks=self.callbacks,
             return_dict=True,
         )
+        coco_metrics = keras_cv.metrics.BoxCOCOMetrics("xyxy", evaluate_freq=1)
+        valimages, valy_true = next(iter(self.preprocessed_test_data))
+        y_pred = self.model.predict(valimages)
+        coco_metrics.update_state(valy_true, y_pred)
+        for metric, value in coco_metrics.result().items():
+            print(metric, value.numpy())
+
 
         self.handle_metrics()
         self.print_metrics()

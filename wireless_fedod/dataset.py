@@ -4,7 +4,7 @@ import keras_cv
 import numpy as np
 import tensorflow as tf
 import zod.constants as constants
-from wireless_fedod.config import BATCH_SIZE, CLASS_MAPPING, DATASET_MAX_IMAGES, DATASET_ROOT, DATASET_VERSION, SHUFFLE_BUFFER_SIZE
+from wireless_fedod.config import BATCH_SIZE, CLASS_MAPPING, OBJECT_CLASSES, DATASET_MAX_IMAGES, DATASET_ROOT, DATASET_VERSION, SHUFFLE_BUFFER_SIZE
 from tqdm.auto import tqdm
 from wireless_fedod.utils import dict_to_tuple_fn, format_element_fn
 from zod import ZodFrames
@@ -29,9 +29,10 @@ def preprocess_fn(dataset, validation_dataset=False, batch_size=BATCH_SIZE):
             ],
         )
 
+    #dataset = dataset.cache()
     dataset = dataset.map(augmenters, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.map(dict_to_tuple_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.cache()
+    #dataset = dataset.cache()
     dataset = dataset.ragged_batch(batch_size, drop_remainder=not validation_dataset)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
     return dataset
@@ -51,7 +52,7 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
             image_path = frame.info.get_key_camera_frame(Anonymization.BLUR).filepath
             annotations = frame.get_annotation(AnnotationProject.OBJECT_DETECTION)
             for annotation in annotations:
-                if annotation.box2d:
+                if annotation.box2d and annotation.name in OBJECT_CLASSES:
                     # Only include frame in dataset if it has 2d bounding boxes
                     frame_has_2d_bbox = True
                     frame_bboxs.append(annotation.box2d.xyxy)
@@ -69,10 +70,10 @@ def create_dataset(zod_frames, frame_ids, bounding_box_format="xyxy"):
 
     bbox_tensor = tf.ragged.constant(bbox)
     # TODO: fix
-    converted_bbox_tensor = keras_cv.bounding_box.convert_format(bbox_tensor, bounding_box_format, "xyxy")
+    #converted_bbox_tensor = keras_cv.bounding_box.convert_format(bbox_tensor, bounding_box_format, "xyxy")
     classes_tensor = tf.ragged.constant(class_ids)
     image_paths_tensor = tf.ragged.constant(image_paths)
-    dataset = tf.data.Dataset.from_tensor_slices((image_paths_tensor, classes_tensor, converted_bbox_tensor))
+    dataset = tf.data.Dataset.from_tensor_slices((image_paths_tensor, classes_tensor, bbox_tensor))
     return dataset
 
 

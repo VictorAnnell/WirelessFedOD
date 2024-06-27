@@ -5,10 +5,30 @@ yolo_prediction_decoder = keras_cv.layers.NonMaxSuppression(
     bounding_box_format="xyxy",
     from_logits=True,
     # Decrease the required threshold to make predictions get pruned out
-    iou_threshold=0.6,
+    iou_threshold=0.2,
     # Tune confidence threshold for predictions to pass NMS
     confidence_threshold=0.51,
 )
+
+
+def testyolo():
+    from keras_cv_attention_models import yolov8
+    from wireless_fedod.config import OBJECT_CLASSES
+
+    model = yolov8.YOLOV8_N(num_classes=len(OBJECT_CLASSES))
+    modela
+    #new_output = ["boxes": model.output[:, :, :BOX_REGRESSION_CHANNELS], ...: ...:         "classes": model.output[:, :, BOX_REGRESSION_CHANNELS:], ...:     ]
+
+    model.old_predict = model.predict
+    def new_predict(x, **kwargs):
+        preds = model.old_predict(x, **kwargs)
+        bboxs, labels, confidences = model.decode_predictions(preds)[0]
+        return {'boxes': bboxs, 'confidence': confidences, 'classes': labels, 'num_detections': np.sum(labels != -1)}
+    model.predict = new_predict
+    loss={'boxes': keras_cv.losses.CIoULoss(bounding_box_format='xyxy'), 'classes': keras.losses.BinaryFocalCrossentropy}
+    model.compile(optimizer="Adam", loss=loss)
+    return model
+
 
 
 def yolov8xs_model_fn() -> keras.Model:
