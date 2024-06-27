@@ -96,7 +96,7 @@ class Car:
             validation_data=self.test_data,
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
-            callbacks=[EvaluateCOCOMetricsCallback(self.preprocessed_test_data, f"car_{self.id}_model.h5")]
+            callbacks=[EvaluateCOCOMetricsCallback(self.test_data, f"car_{self.id}_model.h5")]
             + self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
