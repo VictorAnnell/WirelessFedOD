@@ -25,10 +25,10 @@ class EvaluateCOCOMetricsCallback(keras.callbacks.Callback):
         metrics = self.metrics.result(force=True)
         logs.update(metrics)
 
-        current_map = metrics["MaP"]
-        if current_map > self.best_map:
-            self.best_map = current_map
-            self.model.save(self.save_path)  # Save the model when mAP improves
+#        current_map = metrics["MaP"]
+#        if current_map > self.best_map:
+#            self.best_map = current_map
+#            self.model.save(self.save_path)  # Save the model when mAP improves
 
         return logs
 
@@ -42,10 +42,10 @@ class EvaluateCOCOMetricsCallback(keras.callbacks.Callback):
         metrics = self.metrics.result(force=True)
         logs.update(metrics)
 
-        current_map = metrics["MaP"]
-        if current_map > self.best_map:
-            self.best_map = current_map
-            self.model.save(self.save_path)  # Save the model when mAP improves
+#        current_map = metrics["MaP"]
+#        if current_map > self.best_map:
+#            self.best_map = current_map
+#            self.model.save(self.save_path)  # Save the model when mAP improves
 
         return logs
 
