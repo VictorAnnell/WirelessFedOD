@@ -91,22 +91,31 @@ class Car:
 
         print(f"Training {self}")
 
+        checkpoint_callback = keras.callbacks.ModelCheckpoint(f"car_{self.id}_model.keras", monitor="val_loss", save_best_only=True,)
         result = self.model.fit(
             self.train_data,
             validation_data=self.test_data,
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
-            callbacks=[EvaluateCOCOMetricsCallback(self.test_data, f"car_{self.id}_model.h5")]
-            + self.callbacks,
+            #callbacks=[EvaluateCOCOMetricsCallback(self.test_data, f"car_{self.id}_model.h5")] + self.callbacks,
+            callbacks=[checkpoint_callback, keras.callbacks.EarlyStopping(monitor="val_loss", patience=10)] + self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
+        coco_metrics = keras_cv.metrics.BoxCOCOMetrics("xyxy", evaluate_freq=1)
+        valimages, valy_true = next(iter(self.test_data))
+        y_pred = self.model.predict(valimages)
+        coco_metrics.update_state(valy_true, y_pred)
+        for metric, value in coco_metrics.result().items():
+            print(metric, value.numpy())
+
         self.local_weights = self.model.get_weights()
 
         # Set loss
         self.loss = result.history["loss"][-1]
 
         # Set MaP
-        self.MaP = result.history["MaP"][-1]
+        #self.MaP = result.history["MaP"][-1]
+        self.MaP = coco_metrics.result()["MaP"]
 
         # Set deviation
         flt_global_weights = np.concatenate(np.asanyarray(self.global_weights, dtype=object), axis=None)

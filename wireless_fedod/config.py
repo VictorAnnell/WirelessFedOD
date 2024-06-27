@@ -33,8 +33,13 @@ except ValueError:
         raise ValueError(f"Invalid value for DATASET_MAX_IMAGES: {DATASET_MAX_IMAGES}")
 BATCH_SIZE = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}BATCH_SIZE", 1))
 SHUFFLE_BUFFER_SIZE = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}SHUFFLE_BUFFER_SIZE", BATCH_SIZE * 10))
-OBJECT_CLASSES = OBJECT_CLASSES
+OBJECT_CLASSES = os.getenv(f"{WIRELESS_FEDOD_PREFIX}OBJECT_CLASSES", OBJECT_CLASSES)
+try:
+    OBJECT_CLASSES = OBJECT_CLASSES.split()
+except:
+    pass
 CLASS_MAPPING = dict(zip(range(len(OBJECT_CLASSES)), OBJECT_CLASSES))
+
 
 # Model configuration
 # Set model creation function:

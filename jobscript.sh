@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2024-5-153 -p alvis
 #SBATCH -t 02:00:00
-#SBATCH --gpus-per-node=A40:1
+#SBATCH --gpus-per-node=A100:1
 
 module purge && \
 module load Python/3.11.5-GCCcore-13.2.0 && \
@@ -19,15 +19,16 @@ export SEED=1
 export NUM_ROUNDS=50
 export DATASET_ROOT=/mimer/NOBACKUP/Datasets/ZOD/v20230313/
 export DATASET_VERSION=full
-export DATASET_MAX_IMAGES=3000
+export DATASET_MAX_IMAGES=4000
 export BATCH_SIZE=32
 export MODEL_FN=yolov8xs_model_fn
 export MIXED_PRECISION=False
 export RECREATE_MODEL=False
-export SHARE_MODEL=True
+export SHARE_MODEL=False
 export NUM_CLIENTS=5
-export LOCAL_EPOCHS=2
+export LOCAL_EPOCHS=3
 export STEPS_PER_LOCAL_EPOCH=None
 export IMPORTANCE_FN=random_based_importance
 export SIMULATION_ID=${SEED}_${NUM_ROUNDS}_${MODEL_FN}_${NUM_CLIENTS}_${LOCAL_EPOCHS}_${IMPORTANCE_FN}
+export OBJECT_CLASSES='Vehicle'
 python main.py

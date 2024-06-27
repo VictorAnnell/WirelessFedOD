@@ -50,7 +50,7 @@ class EvaluateCOCOMetricsCallback(keras.callbacks.Callback):
         return logs
 
 def load_image(image_path):
-    image = tf.io.read_file(image_path)
+    image = tf.io.read_file(tf.cast(image_path, dtype=tf.string))
     image = tf.image.decode_jpeg(image, channels=3)
     return image
 
@@ -64,11 +64,13 @@ def format_element_fn(image_path, classes, bboxes):
     }
     return {
         "images": tf.cast(image, tf.float32),
-        "bounding_boxes": keras_cv.bounding_box.to_dense(bounding_boxes, max_boxes=500),
+        "bounding_boxes": keras_cv.bounding_box.to_dense(bounding_boxes),
+        #"bounding_boxes": bounding_boxes,
     }
 
 
 def dict_to_tuple_fn(inputs):
+    #return inputs["images"], keras_cv.bounding_box.to_dense(inputs["bounding_boxes"], max_boxes=500)
     return inputs["images"], inputs["bounding_boxes"]
 
 
