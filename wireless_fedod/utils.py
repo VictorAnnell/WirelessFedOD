@@ -59,19 +59,17 @@ def format_element_fn(image_path, classes, bboxes):
     # Create a dictionary with the image and bounding boxes as required by KerasCV
     image = load_image(image_path)
     bounding_boxes = {
-        "classes": tf.cast(classes, dtype=tf.float32),
+        "classes": tf.cast(classes, dtype=tf.int64),
         "boxes": tf.cast(bboxes, dtype=tf.float32),
     }
     return {
         "images": tf.cast(image, tf.float32),
-        "bounding_boxes": keras_cv.bounding_box.to_dense(bounding_boxes),
-        #"bounding_boxes": bounding_boxes,
+        "bounding_boxes": bounding_boxes,
     }
 
 
 def dict_to_tuple_fn(inputs):
-    #return inputs["images"], keras_cv.bounding_box.to_dense(inputs["bounding_boxes"], max_boxes=500)
-    return inputs["images"], inputs["bounding_boxes"]
+    return inputs["images"], keras_cv.bounding_box.to_dense(inputs["bounding_boxes"], max_boxes=500)
 
 
 def visualize_dataset(dataset, preprocess_fn, class_mapping=None, bounding_box_format="xyxy"):
