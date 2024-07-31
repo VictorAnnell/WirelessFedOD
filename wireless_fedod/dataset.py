@@ -96,8 +96,7 @@ def get_random_sized_subset(input_list, client_id, num_clients):
     return subsets[client_id]
 
 
-def load_zod(version=DATASET_VERSION, bounding_box_format="xyxy", max_images=DATASET_MAX_IMAGES):
-    dataset_root = DATASET_ROOT
+def load_zod(version=DATASET_VERSION, bounding_box_format="xyxy", max_images=DATASET_MAX_IMAGES, dataset_root=DATASET_ROOT) -> tuple("tf.data.Dataset"):
     version = version  # "mini" or "full"
 
     # initialize ZodFrames
