@@ -2,7 +2,7 @@ import math
 import os
 
 from dotenv import load_dotenv
-from zod.anno.object import OBJECT_CLASSES
+from zod.anno.object import OBJECT_CLASSES as zod_object_classes
 
 from wireless_fedod.importance import *  # noqa: F403
 from wireless_fedod.models import *  # noqa: F403
@@ -33,7 +33,7 @@ except ValueError:
         raise ValueError(f"Invalid value for DATASET_MAX_IMAGES: {DATASET_MAX_IMAGES}")
 BATCH_SIZE = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}BATCH_SIZE", 1))
 SHUFFLE_BUFFER_SIZE = int(os.getenv(f"{WIRELESS_FEDOD_PREFIX}SHUFFLE_BUFFER_SIZE", BATCH_SIZE * 10))
-OBJECT_CLASSES = os.getenv(f"{WIRELESS_FEDOD_PREFIX}OBJECT_CLASSES", OBJECT_CLASSES)
+OBJECT_CLASSES = os.getenv(f"{WIRELESS_FEDOD_PREFIX}OBJECT_CLASSES", zod_object_classes)
 try:
     OBJECT_CLASSES = OBJECT_CLASSES.split()
 except:
