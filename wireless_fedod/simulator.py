@@ -42,7 +42,7 @@ class WirelessFedODSimulator:
         self.cars = []
         self.global_weights = None
         self.num_clients = num_clients
-        self.callbacks = [keras.callbacks.ModelCheckpoint(f"simulator_model.keras", monitor="val_loss", save_best_only=True)]
+        self.callbacks = [keras.callbacks.ModelCheckpoint(f"logs/{self.simulation_id}/global/simulator_model.keras", monitor="val_loss", save_best_only=True)]
 
         self.base_stations = []
         self.base_station = BaseStation(0, (0, 0))

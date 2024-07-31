@@ -91,7 +91,7 @@ class Car:
 
         print(f"Training {self}")
 
-        checkpoint_callback = keras.callbacks.ModelCheckpoint(f"car_{self.id}_model.keras", monitor="val_loss", save_best_only=True,)
+        checkpoint_callback = keras.callbacks.ModelCheckpoint(f"logs/{self.simulation_id}/cars/{self.id}/car_{self.id}_model.keras", monitor="val_loss", save_best_only=True,)
         result = self.model.fit(
             self.train_data,
             validation_data=self.test_data,
