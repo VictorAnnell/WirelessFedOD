@@ -32,7 +32,7 @@ class Car:
         self.local_weights = None
         self.global_weights = None
         self.simulation_id = simulation_id
-        self.test_split = 0.2
+        self.test_split = 0.02
         self.round_num = 0
         self.deviation = 0.0
         self.loss = None
@@ -98,7 +98,7 @@ class Car:
             initial_epoch=self.round_num * self.local_epochs,
             epochs=(self.round_num * self.local_epochs) + self.local_epochs,
             #callbacks=[EvaluateCOCOMetricsCallback(self.test_data, f"car_{self.id}_model.h5")] + self.callbacks,
-            callbacks=[checkpoint_callback, keras.callbacks.EarlyStopping(monitor="val_loss", patience=10)] + self.callbacks,
+            callbacks=[checkpoint_callback]+ self.callbacks,
             steps_per_epoch=self.steps_per_epoch,
         )
         coco_metrics = keras_cv.metrics.BoxCOCOMetrics("xyxy", evaluate_freq=1)
